@@ -15,7 +15,7 @@ app.innerHTML = `
   <aside aria-label="Scene controls"><div class="panel-title">ATMOSPHERE</div>
     <label for="fog">FOG <output id="fog-value">0.0052</output><input id="fog" type="range" min="0.002" max="0.02" step="0.0002" value="0.0052"></label>
     <label for="light">LIGHT <output id="light-value">1.0</output><input id="light" type="range" min="0.3" max="2" step="0.1" value="1.0"></label>
-    <a class="panel-link" href="/scene-003.html">NEXT SCENE</a><a class="panel-link" href="/">SCENE 001</a><button id="hide" type="button">HIDE UI</button>
+    <a class="panel-link" href="/classic-003.html">NEXT SCENE</a><a class="panel-link" href="/classic-001.html">SCENE 001</a><button id="hide" type="button">HIDE UI</button>
   </aside><button id="show" type="button" hidden>SHOW UI</button>`;
 
 // ---------------------------------------------------------------- renderer

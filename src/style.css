@@ -20,3 +20,5 @@ button:hover { background: #4b5253; }
 .panel-link:hover { background: #4b5253; }
 #show { position: absolute; right: 25px; top: 25px; width: auto; }
 @media (max-width: 650px) { header { left: 18px; top: 18px; } h1 { font-size: 16px; } aside { top: auto; bottom: 65px; right: 12px; width: 180px; padding: 12px; } }
+.loading { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); letter-spacing: .22em; font-size: 10px; color: #c9cfcf; pointer-events: none; }
+.loading[hidden] { display: none; }

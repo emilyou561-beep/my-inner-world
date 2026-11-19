@@ -168,7 +168,7 @@ lightInput.addEventListener('input', () => {
   lightValue.textContent = value.toFixed(1);
 });
 const panel = document.querySelector<HTMLElement>('aside')!; const show = document.querySelector<HTMLButtonElement>('#show')!;
-document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = '/scene-002.html'; });
+document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = '/classic-002.html'; });
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; }); show.addEventListener('click', () => { panel.hidden = false; show.hidden = true; });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 function animate() { requestAnimationFrame(animate); composer.render(); } animate();
