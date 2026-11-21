@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -13,7 +14,7 @@ app.innerHTML = `
   <div id="scene" aria-label="Monumental brutalist exterior"></div>
   <header><div class="eyebrow">CONCRETE WORLD / 002</div><h1>THE MONUMENTAL EXTERIOR</h1></header>
   <aside aria-label="Scene controls"><div class="panel-title">ATMOSPHERE</div>
-    <label for="fog">FOG <output id="fog-value">0.0052</output><input id="fog" type="range" min="0.002" max="0.02" step="0.0002" value="0.0052"></label>
+    <label for="fog">FOG <output id="fog-value">0.003</output><input id="fog" type="range" min="0.002" max="0.02" step="0.0002" value="0.003"></label>
     <label for="light">LIGHT <output id="light-value">1.0</output><input id="light" type="range" min="0.3" max="2" step="0.1" value="1.0"></label>
     <a class="panel-link" href="/classic-003.html">NEXT SCENE</a><a class="panel-link" href="/classic-001.html">SCENE 001</a><button id="hide" type="button">HIDE UI</button>
   </aside><button id="show" type="button" hidden>SHOW UI</button>`;
@@ -23,13 +24,13 @@ app.innerHTML = `
 const SKY = new THREE.Color(0xc4cdcb);
 const scene = new THREE.Scene();
 scene.background = SKY;
-scene.fog = new THREE.FogExp2(SKY, 0.0052);
+scene.fog = new THREE.FogExp2(SKY, 0.003);
 
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.3, 1200);
 camera.position.set(0, 5.5, 22);
 camera.rotation.order = 'YXZ';
 let yaw = 0;
-let pitch = 0.34;
+let pitch = 0.3;
 camera.rotation.set(pitch, yaw, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -164,92 +165,88 @@ function volume(cx: number, y0: number, cz: number, w: number, h: number, d: num
 }
 
 // ---------------------------------------------------------------- site: plateau on a cliff
-box(0, -0.6, -50, 260, 1.2, 160, groundMat);                       // plateau, ends at z = 30
+box(0, -0.6, -110, 300, 1.2, 280, groundMat);                       // plateau, ends at z = 30
 box(0, -21, 31, 260, 42, 6, darkConcrete);                          // cliff face (overlaps plateau edge: no seam)
 box(0, -42.5, 150, 600, 1, 240, groundMat);                         // barren plain far below
 box(0, 0.55, 29.4, 260, 1.1, 0.4, darkConcrete);                    // low edge wall behind the observer
 railing('front', 0, 29.4, 0, 0, 1.1, 80);
 
 // ---------------------------------------------------------------- megastructure
-// Core tower: rises into the fog.
-const CORE = { x: 0, z: -55, w: 30, d: 26, h: 200 };
-box(CORE.x, CORE.h / 2, CORE.z, CORE.w, CORE.h, CORE.d, darkConcrete);
-for (let yy = 58.5; yy < 196; yy += 9) {
-  ribbon('left', CORE.x, CORE.z, CORE.w, CORE.d, 0, yy, CORE.d - 6);
-  ribbon('right', CORE.x, CORE.z, CORE.w, CORE.d, 0, yy, CORE.d - 6);
+// One colossal monolith instead of a stack of blocks: a 140 x 200 m concrete slab pierced by a
+// 34 m round aperture lined in steel, with a tiny gate at its foot for scale.
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const metal = new THREE.MeshStandardMaterial({ color: 0x737a7d, metalness: 0.9, roughness: 0.4, envMap, envMapIntensity: 1.0 });
+const darkMetal = new THREE.MeshStandardMaterial({ color: 0x3d4245, metalness: 0.85, roughness: 0.5, envMap, envMapIntensity: 0.8 });
+const glow = new THREE.MeshStandardMaterial({ color: 0x0c0f10, emissive: 0xe4f3f6, emissiveIntensity: 2.2, roughness: 1 });
+
+const MZ = -150, MD = 24, MW = 140, MH = 200, AY = 96, AR = 34;
+{
+  const shape = new THREE.Shape();
+  shape.moveTo(-MW / 2, 0); shape.lineTo(MW / 2, 0); shape.lineTo(MW / 2, MH); shape.lineTo(-MW / 2, MH); shape.lineTo(-MW / 2, 0);
+  const hole = new THREE.Path(); hole.absarc(0, AY, AR, 0, Math.PI * 2, true); shape.holes.push(hole);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: MD, bevelEnabled: false, curveSegments: 96 });
+  const uv = geo.attributes.uv as THREE.BufferAttribute;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / TILE, uv.getY(i) / TILE);
+  geo.translate(0, 0, MZ - MD / 2);
+  push(geo, concrete);
 }
-// Vertical fins on the core front above the gate.
-for (let x = -13; x <= 13; x += 2) box(x, 128, CORE.z + CORE.d / 2 + 0.6, 0.45, 140, 1.2, plainConcrete);
-
-// Monumental gate at the foot of the core: deep portal frame, dark tall opening.
-const gz = CORE.z + CORE.d / 2;
-box(0, 24, gz + 0.05, 12, 48, 0.2, voidMat);
-box(-9, 26, gz + 4, 6, 52, 8, concrete);
-box(9, 26, gz + 4, 6, 52, 8, concrete);
-box(0, 55, gz + 4, 26, 6, 8, concrete);
-box(0, 50, gz + 1.5, 14, 4, 3, darkConcrete);
-box(-6.5, 24, gz + 1.2, 1, 48, 2.4, darkConcrete);
-box(6.5, 24, gz + 1.2, 1, 48, 2.4, darkConcrete);
-
-// Side towers.
-const LT = { x: -58, z: -66, w: 18, d: 22 };
-volume(LT.x, 0, LT.z, LT.w, 176, LT.d, { faces: ['front', 'right', 'left'], every: 2, margin: 2.2 });
-const RT = { x: 58, z: -68, w: 18, d: 22 };
-box(RT.x, 95, RT.z, RT.w, 190, RT.d, darkConcrete);
-// Right tower front: capsule modules with round portholes.
-const ringGeo = new THREE.TorusGeometry(1.35, 0.35, 10, 28);
-const discGeo = new THREE.CircleGeometry(1.35, 28);
-for (let row = 0; row < 26; row++) for (let col = -1; col <= 1; col++) {
-  const x = RT.x + col * 5.8 + (row % 2 ? 0.6 : -0.6);
-  const y = 6 + row * 5.8;
-  const z = RT.z + RT.d / 2 + 1.6 + ((row + col) % 3 === 0 ? 0.8 : 0);
-  box(x, y, z, 5.4, 5.4, 3.2, concrete);
-  const r = ringGeo.clone(); r.translate(x, y, z + 1.6); push(r, plainConcrete);
-  const g = discGeo.clone(); g.translate(x, y, z + 1.62); push(g, glass);
+const front = MZ + MD / 2;
+// Steel sleeve lining the aperture, with heavy rims front and back and a light line inside.
+{
+  const sleeve = new THREE.CylinderGeometry(AR - 0.3, AR - 0.3, MD + 1, 128, 1, true);
+  sleeve.rotateX(Math.PI / 2); sleeve.translate(0, AY, MZ); push(sleeve, metal);
+  for (const [z, t] of [[front + 0.6, 1.6], [MZ - MD / 2 - 0.6, 1.2]] as [number, number][]) {
+    const rim = new THREE.TorusGeometry(AR + 0.4, t, 16, 160); rim.translate(0, AY, z); push(rim, darkMetal);
+  }
+  const line = new THREE.TorusGeometry(AR - 0.45, 0.22, 8, 160); line.translate(0, AY, front - 4); push(line, glow);
+  // radial steel ribs around the rim, like the stiffeners of a pressure door
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    const g = new THREE.BoxGeometry(1.1, 7, 1.6);
+    g.translate(0, AR + 3, 0); g.rotateZ(a); g.translate(0, AY, front + 0.6); push(g, darkMetal);
+  }
 }
-for (let yy = 4.5; yy < 186; yy += 9) ribbon('left', RT.x, RT.z, RT.w, RT.d, 0, yy, RT.d - 5);
-
-// Stacked cantilevered volumes, staggered left/right up the core.
-volume(-24, 20.25, -34, 36, 13.5, 20, {});
-volume(22, 38.25, -33, 40, 13.5, 22, { split: true });
-volume(-28, 57, -38, 44, 18, 26, {});
-volume(27, 81, -40, 38, 13.5, 24, {});
-volume(-10, 105.75, -34, 50, 13.5, 22, { split: true });
-volume(25, 130.5, -44, 34, 18, 22, {});
-volume(-22, 153, -46, 40, 13.5, 24, {});
-volume(-40, 99, -60, 30, 9, 30, { faces: ['front'] });               // bridge to the left tower
-volume(40, 0, -42, 24, 18, 20, { faces: ['front', 'left'] });        // low service wing
-louvre('front', 40, -42, 24, 20, -5, 4, 8, 4);
-louvre('front', 40, -42, 24, 20, 5, 4, 8, 4);
-louvre('right', CORE.x, CORE.z, CORE.w, CORE.d, 0, 30, 10, 6);
-louvre('left', CORE.x, CORE.z, CORE.w, CORE.d, 0, 30, 10, 6);
-
-// Rear mass, mostly dissolved in fog, gives the depth of a city-sized building.
-volume(0, 0, -122, 210, 150, 30, { faces: ['front'], every: 2, margin: 6, rail: false, split: true });
-
-// ---------------------------------------------------------------- structure: struts & leaning piers
-// Leaning A-frame piers under the first cantilever.
-for (const z of [-27, -41]) {
-  strut(v3(-41, 0, z), v3(-33, 20.3, z), 1.6);
-  strut(v3(-25, 0, z), v3(-33, 20.3, z), 1.6);
+// Horizontal reveal bands across the face, interrupted by the aperture.
+for (const y of [24, 48, 150, 174]) box(0, y, front + 0.25, MW, 0.9, 0.5, darkConcrete);
+for (const y of [72, 120]) for (const sx of [-1, 1]) box(sx * (AR + 22), y, front + 0.25, MW / 2 - AR - 6, 0.9, 0.5, darkConcrete);
+// Steel cladding fins on the two outer thirds of the face.
+for (const sx of [-1, 1]) for (let i = 0; i < 7; i++) {
+  const x = sx * (MW / 2 - 5 - i * 3.2);
+  box(x, MH / 2, front + 0.7, 0.5, MH - 6, 1.4, darkMetal);
 }
-// Diagonal braces from the core / towers to the undersides of the cantilevers.
-for (const z of [-25, -41]) strut(v3(15, 22, -43), v3(38, 38.3, z), 1.3);
-for (const z of [-28, -48]) strut(v3(-49, 36, -56), v3(-46, 57.1, z), 1.3);
-for (const z of [-31, -49]) strut(v3(15, 62, -44), v3(42, 81.1, z), 1.2);
-for (const z of [-26, -42]) strut(v3(-15, 86, -43), v3(-32, 105.8, z), 1.2);
-for (const z of [-36, -52]) strut(v3(15, 112, -44), v3(39, 130.6, z), 1.1);
-// Slender steel tie rods above the cantilevers, back to the core.
-strut(v3(40, 52.3, -23), v3(15, 70, -42), 0.35, steel);
-strut(v3(-48, 75.6, -26), v3(-15, 95, -42), 0.35, steel);
-strut(v3(43, 95.1, -29), v3(15, 115, -42), 0.35, steel);
+// The slab's crown: a thin steel parapet and two antenna masts lost in the fog.
+box(0, MH + 1, MZ, MW + 2, 2, MD + 2, darkMetal);
+for (const sx of [-1, 1]) { box(sx * 44, MH + 30, MZ, 1.4, 60, 1.4, metal); box(sx * 44, MH + 2.5, MZ, 6, 3, 6, darkMetal); }
+
+// Tiny gate at the foot, under the aperture: the only human-scale thing on the face.
+box(0, 4.5, front + 0.05, 3.6, 9, 0.2, voidMat);
+box(-2.5, 4.8, front + 0.8, 1.4, 9.6, 1.6, metal);
+box(2.5, 4.8, front + 0.8, 1.4, 9.6, 1.6, metal);
+box(0, 10.1, front + 0.8, 6.4, 1, 1.6, metal);
+box(0, 9.2, front + 0.3, 3.6, 0.18, 0.4, glow);
+// A long, low ramp leading from the plateau edge to the gate, with steel edge lines.
+box(0, 0.12, (front + 2 + 8) / 2, 10, 0.24, front + 2 - 8 > 0 ? front - 6 : 8 - front - 2, plainConcrete);
+for (const sx of [-1, 1]) box(sx * 5.1, 0.3, (front + 8) / 2, 0.2, 0.4, 8 - front, metal);
+
+// Two leaning buttresses brace the slab from the plateau.
+for (const sx of [-1, 1]) {
+  strut(v3(sx * 100, 0, -100), v3(sx * 66, 150, MZ), 9, darkConcrete);
+  strut(v3(sx * 100, 0, -100), v3(sx * 66, 150, MZ), 1.2, metal);   // steel spine inset into the buttress edge
+  box(sx * 100, 3, -100, 16, 6, 16, darkConcrete);                  // footing
+}
+
+// Far monoliths, almost dissolved in the fog: the city-scale depth behind.
+box(-190, 140, -330, 60, 280, 40, plainConcrete);
+box(180, 110, -360, 80, 220, 40, plainConcrete);
+box(30, 170, -440, 120, 340, 50, plainConcrete);
 
 // Bake batches into meshes.
 for (const [mat, geos] of batches) {
   const merged = mergeGeometries(geos, false);
   if (!merged) continue;
   const mesh = new THREE.Mesh(merged, mat);
-  mesh.castShadow = mat !== glass;
+  mesh.castShadow = mat !== glass && mat !== glow;
   mesh.receiveShadow = true;
   scene.add(mesh);
 }

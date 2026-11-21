@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Batch, detailed, aoComposer, v3 } from './kit';
 import './style.css';
 
@@ -26,10 +27,10 @@ scene.fog = new THREE.FogExp2(background, 0.008);
 
 const camera = new THREE.PerspectiveCamera(66, innerWidth / innerHeight, 0.1, 900);
 // The observer stands on a landing cantilevered from the south wall, high inside the shaft.
-camera.position.set(0, 2.4, 22.3);
+camera.position.set(0, 2.4, 28.5);
 camera.rotation.order = 'YXZ';
 let yaw = 0;
-let pitch = -0.12;
+let pitch = 0.3;
 camera.rotation.set(pitch, yaw, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -57,10 +58,9 @@ const wallColor = texture('/textures/lightwall_diff_2k.jpg', true);
 const wallNormal = texture('/textures/lightwall_nor_gl_2k.jpg');
 const wallRough = texture('/textures/lightwall_rough_2k.jpg');
 
-const concrete = detailed(new THREE.MeshStandardMaterial({ color: 0xb6bbbd, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.98 }), { floorY: -180 });
-const darkConcrete = detailed(new THREE.MeshStandardMaterial({ color: 0x868b8d, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.99 }), { joints: 0.7, streaks: 0.6, floorY: -180 });
+const concrete = detailed(new THREE.MeshStandardMaterial({ color: 0xb6bbbd, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.98 }), { floorY: -180, cyl: [0, 0] });
+const darkConcrete = detailed(new THREE.MeshStandardMaterial({ color: 0x868b8d, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.99 }), { joints: 0.7, streaks: 0.6, floorY: -180, cyl: [0, 0] });
 const stairMat = detailed(new THREE.MeshStandardMaterial({ color: 0xaeb3b5, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.98 }), { joints: 0, streaks: 0 });
-const steel = new THREE.MeshStandardMaterial({ color: 0x3a3f40, roughness: 0.6, metalness: 0.4 });
 const floorMat = new THREE.MeshStandardMaterial({ color: 0xa6abad, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: wallRough, roughness: 0.97 });
 const voidMat = new THREE.MeshStandardMaterial({ color: 0x121516, roughness: 1 });
 const skyMat = new THREE.MeshBasicMaterial({ color: 0xe9eeee, fog: false });
@@ -71,140 +71,110 @@ function block(x: number, y: number, z: number, w: number, h: number, d: number,
   b.box(x, y, z, w, h, d, material);
 }
 
+// ---------- metal ----------
+// Brushed dark steel for the machine parts. Metal needs something to reflect, so these
+// materials get a soft studio environment map; the concrete stays purely diffuse.
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const metal = new THREE.MeshStandardMaterial({ color: 0x6d7376, metalness: 0.9, roughness: 0.42, envMap, envMapIntensity: 0.9 });
+const darkMetal = new THREE.MeshStandardMaterial({ color: 0x3b4043, metalness: 0.85, roughness: 0.5, envMap, envMapIntensity: 0.7 });
+const glow = new THREE.MeshStandardMaterial({ color: 0x0c0f10, emissive: 0xdff2f7, emissiveIntensity: 2.4, roughness: 1 });
+
 // ---------- the shaft ----------
-// Interior is 72 x 72 m, from far below the fog line (-180) up to a roof at +118.
-const HALF = 36;
+// A round reactor shaft, 68 m across, from far below the fog line (-180) to a roof at +118.
+// No windows: smooth board-formed concrete, steel ribs and rings, a spiral ramp, and one
+// suspended machine ring as the focal object.
+const R = 34;
 const BOTTOM = -180;
 const TOP = 118;
-const H = TOP - BOTTOM;
-const MID = (TOP + BOTTOM) / 2;
-block(0, MID, -HALF - 2, HALF * 2 + 8, H, 4);          // north wall (facing the observer)
-block(0, MID, HALF + 2, HALF * 2 + 8, H, 4);           // south wall (behind the observer)
-block(-HALF - 2, MID, 0, 4, H, HALF * 2);              // west wall
-block(HALF + 2, MID, 0, 4, H, HALF * 2);               // east wall
-block(0, BOTTOM - 1, 0, HALF * 2 + 8, 2, HALF * 2 + 8, floorMat);
+const TAU = Math.PI * 2;
+b.arc(0, 0, R, R + 4, 0, TAU, BOTTOM, TOP, concrete, 3);                     // shaft wall
+b.disc(0, 0, R, BOTTOM, floorMat, 1);                                         // floor, lost in fog
 
-// Roof slab with a square oculus (18 x 18 m), built from four pieces so the hole is real.
-const O = 9;
-const roofY = TOP + 2;
-block(0, roofY, -(O + HALF) / 2 - 2, HALF * 2 + 8, 4, HALF - O + 4);
-block(0, roofY, (O + HALF) / 2 + 2, HALF * 2 + 8, 4, HALF - O + 4);
-block(-(O + HALF) / 2 - 2, roofY, 0, HALF - O + 4, 4, O * 2);
-block((O + HALF) / 2 + 2, roofY, 0, HALF - O + 4, 4, O * 2);
-// Deep coffer around the oculus so the opening reads as thick concrete, not a paper cut.
-block(0, TOP - 4, -O - 1, O * 2 + 4, 8, 2, darkConcrete);
-block(0, TOP - 4, O + 1, O * 2 + 4, 8, 2, darkConcrete);
-block(-O - 1, TOP - 4, 0, 2, 8, O * 2, darkConcrete);
-block(O + 1, TOP - 4, 0, 2, 8, O * 2, darkConcrete);
-// Bright sky plane above the oculus (unaffected by fog).
-const sky = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), skyMat);
+// Roof slab with a round oculus (r = 11 m) and a deep stepped steel collar.
+const O = 11;
+b.arc(0, 0, O, R + 4, 0, TAU, TOP, TOP + 4, concrete, 3);
+b.arc(0, 0, O, O + 1.2, 0, TAU, TOP - 6, TOP, darkMetal, 2);
+b.arc(0, 0, O + 1.2, O + 4, 0, TAU, TOP - 2.5, TOP, darkConcrete, 2);
+const sky = new THREE.Mesh(new THREE.CircleGeometry(O + 6, 64), skyMat);
 sky.rotation.x = Math.PI / 2;
 sky.position.set(0, TOP + 12, 0);
 scene.add(sky);
 
-// ---------- wall articulation ----------
-// Ring beams every 24 m on all four walls.
-for (let y = -132; y <= 108; y += 24) {
-  block(0, y, -HALF + 0.7, HALF * 2, 1.6, 1.4, darkConcrete);
-  block(0, y, HALF - 0.7, HALF * 2, 1.6, 1.4, darkConcrete);
-  block(-HALF + 0.7, y, 0, 1.4, 1.6, HALF * 2 - 2.8, darkConcrete);
-  block(HALF - 0.7, y, 0, 1.4, 1.6, HALF * 2 - 2.8, darkConcrete);
+// Steel ribs: 32 tall fins standing off the wall, the shaft's main rhythm.
+const RIBS = 12;
+for (let i = 0; i < RIBS; i++) {
+  const a = (i / RIBS) * TAU;
+  if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.4) continue; // clear the landing
+  b.boxRot(Math.sin(a) * (R - 0.6), (BOTTOM + TOP) / 2, -Math.cos(a) * (R - 0.6), 2.6, TOP - BOTTOM, 1.2, -a, darkMetal);
+  b.boxRot(Math.sin(a) * (R - 1.35), (BOTTOM + TOP) / 2, -Math.cos(a) * (R - 1.35), 0.9, TOP - BOTTOM, 0.4, -a, darkMetal);
+}
+// Ring beams: a steel band every 30 m, deeper than the ribs so the shaft reads as stacked drums.
+for (let y = -120; y <= 90; y += 70) {
+  b.arc(0, 0, R - 2.4, R, 0, TAU, y - 0.9, y + 0.9, metal, 2);
+  b.arc(0, 0, R - 2.0, R, 0, TAU, y - 1.6, y - 0.9, darkConcrete, 2);
 }
 
-// Galleries: rows of deep dark openings with thick jambs, on the north, west and east walls.
-function galleryRow(wall: 'north' | 'west' | 'east', y: number, count: number, spacing: number, w: number, h: number) {
-  for (let i = 0; i < count; i++) {
-    const t = (i - (count - 1) / 2) * spacing;
-    if (wall === 'north') {
-      block(t, y, -HALF + 0.12, w, h, 0.3, voidMat, false);
-      block(t - w / 2 - 0.6, y, -HALF + 1, 1.2, h + 1.2, 2, concrete);
-      block(t + w / 2 + 0.6, y, -HALF + 1, 1.2, h + 1.2, 2, concrete);
-    } else {
-      const sx = wall === 'west' ? -HALF : HALF;
-      const dir = wall === 'west' ? 1 : -1;
-      block(sx + dir * 0.12, y, t, 0.3, h, w, voidMat, false);
-      block(sx + dir * 1, y, t - w / 2 - 0.6, 2, h + 1.2, 1.2, concrete);
-      block(sx + dir * 1, y, t + w / 2 + 0.6, 2, h + 1.2, 1.2, concrete);
-    }
+// Two colossal recessed portals facing each other across the void (east and west).
+for (const side of [-1, 1]) {
+  const a = side * Math.PI / 2;
+  b.arc(0, 0, R - 0.05, R + 0.2, a - 0.12, a + 0.12, -40, 40, voidMat, 2);    // dark opening
+  b.arc(0, 0, R - 3, R, a - 0.15, a - 0.12, -42, 42, metal, 2);              // steel jambs
+  b.arc(0, 0, R - 3, R, a + 0.12, a + 0.15, -42, 42, metal, 2);
+  b.arc(0, 0, R - 3, R, a - 0.15, a + 0.15, 40, 42, metal, 2);               // lintel
+  b.arc(0, 0, R - 0.6, R, a - 0.11, a + 0.11, -38, -37.4, glow, 2);           // light strip at the threshold
+}
+
+// Spiral ramp hugging the wall: one turn every 52 m, from the fog up to the roof collar.
+const PITCH = 52;
+const STEP = 0.02;
+for (let a = 0, y = BOTTOM + 20; y < TOP - 12; a += STEP, y += (PITCH * STEP) / TAU) {
+  if (Math.abs(Math.sin(a) ) > 0.99 && y > -42 && y < 42) continue;           // pass under the portals
+  b.arc(0, 0, R - 6.5, R - 2.4, a, a + STEP + 0.004, y - 0.7, y, concrete, 4);
+  b.arc(0, 0, R - 6.5, R - 6.2, a, a + STEP + 0.004, y, y + 1.0, darkConcrete, 4); // inner upstand
+  b.arc(0, 0, R - 6.3, R - 4.4, a, a + STEP + 0.004, y - 1.8, y - 0.7, darkMetal, 4); // steel soffit
+}
+
+// ---------- the machine ring ----------
+// A suspended steel halo with a glowing inner face, hung from the roof on four cables,
+// and a second, smaller ring far below in the fog for depth.
+function halo(y: number, r: number, depth: number) {
+  b.arc(0, 0, r, r + depth, 0, TAU, y - 2.2, y + 2.2, metal, 2);
+  b.arc(0, 0, r + 0.4, r + depth - 0.4, 0, TAU, y + 2.2, y + 2.8, darkMetal, 2);
+  b.arc(0, 0, r + 0.4, r + depth - 0.4, 0, TAU, y - 2.8, y - 2.2, darkMetal, 2);
+  b.arc(0, 0, r - 0.05, r + 0.05, 0, TAU, y - 0.5, y + 0.5, glow, 2);       // light line on the inner face
+  for (let i = 0; i < 16; i++) {                                               // radial stiffeners
+    const a = (i / 16) * TAU;
+    b.boxRot(Math.sin(a) * (r + depth / 2), y, -Math.cos(a) * (r + depth / 2), 0.4, 6.2, depth + 0.6, -a, darkMetal);
   }
 }
-for (const y of [-108, -84, -60, -36, -12, 12, 36, 60, 84]) galleryRow('north', y, 5, 12.5, 5, 13);
-for (const y of [-96, -72, -48, -24, 0, 24, 48, 72]) {
-  galleryRow('west', y, 4, 15, 4, 9);
-  galleryRow('east', y + 12, 4, 15, 4, 9);
-}
-// One very tall slot in the centre of the north wall: the eye of the composition.
-block(0, 50, -HALF + 0.1, 3.2, 120, 0.3, voidMat, false);
-block(-2.6, 50, -HALF + 1.1, 2, 122, 2.2, darkConcrete);
-block(2.6, 50, -HALF + 1.1, 2, 122, 2.2, darkConcrete);
-
-// Corner piers running the full height.
-for (const sx of [-1, 1]) for (const sz of [-1, 1]) block(sx * (HALF - 3), MID, sz * (HALF - 3), 6, H, 6, darkConcrete);
-
-// ---------- stairs & bridges ----------
-// A flight of solid concrete treads on a sloping slab, with a steel handrail on the void side.
-function flight(x0: number, y0: number, z0: number, axis: 'x' | 'z', dir: 1 | -1, steps: number, voidSide: 1 | -1) {
-  const run = 0.9, rise = 0.55, width = 3.2;
-  const at = (along: number, y: number, side = 0) => axis === 'x' ? v3(x0 + along, y, z0 + side) : v3(x0 + side, y, z0 + along);
-  for (let s = 0; s < steps; s++) {
-    const p = at(dir * (s * run + run / 2), y0 + s * rise + rise / 2);
-    if (axis === 'x') block(p.x, p.y, p.z, run, rise, width, stairMat); else block(p.x, p.y, p.z, width, rise, run, stairMat);
-  }
-  const L = dir * steps * run, H = steps * rise;
-  b.slab(at(0, y0 - 0.35), at(L, y0 + H - 0.35), width, 0.5, darkConcrete);            // sloping soffit slab
-  const top = at(L + dir * 2, y0 + H - 0.3);
-  if (axis === 'x') block(top.x, top.y, top.z, 4, 0.6, width, stairMat); else block(top.x, top.y, top.z, width, 0.6, 4, stairMat);
-  const edge = voidSide * (width / 2 - 0.12);
-  b.rail(at(0, y0 + 0.02, edge), at(L, y0 + H + 0.02, edge), steel);                    // handrail follows the pitch
-  b.rail(at(L, y0 + H, edge), at(L + dir * 4, y0 + H, edge), steel);                     // and the landing
-}
-// Zig-zag stairs climbing the north wall (left half) and descending into the fog.
-for (let k = -5; k <= 3; k++) {
-  const y0 = k * 12;
-  const dir = (k % 2 === 0 ? 1 : -1) as 1 | -1;
-  flight(dir === 1 ? -30 : -8, y0, -HALF + 2.6, 'x', dir, 22, 1);
-}
-// Stairs along the east wall.
-for (let k = -4; k <= 3; k++) {
-  const y0 = k * 12 + 6;
-  const dir = (k % 2 === 0 ? 1 : -1) as 1 | -1;
-  flight(HALF - 2.6, y0, dir === 1 ? -26 : -6, 'z', dir, 22, -1);
+halo(34, 15, 3.4);
+halo(-62, 10, 2.4);
+for (let i = 0; i < 4; i++) {
+  const a = (i / 4) * TAU + Math.PI / 4;
+  const x = Math.sin(a) * 16.7, z = -Math.cos(a) * 16.7;
+  b.box(x, (36.8 + TOP) / 2, z, 0.35, TOP - 36.8, 0.35, darkMetal);         // suspension cable
 }
 
-// Bridges across the void at different heights and directions.
-function bridge(y: number, axis: 'x' | 'z', offset: number, width: number) {
-  const len = HALF * 2;
-  if (axis === 'x') {
-    block(0, y, offset, len, 1.4, width, concrete);
-    block(0, y - 2.2, offset, len, 3, 1.4, darkConcrete);               // deep spine beam
-    block(0, y + 0.9, offset - width / 2 + 0.15, len, 0.6, 0.3, darkConcrete);
-    block(0, y + 0.9, offset + width / 2 - 0.15, len, 0.6, 0.3, darkConcrete);
-    for (const sd of [-1, 1]) b.rail(v3(-HALF + 1, y + 1.2, offset + sd * (width / 2 - 0.15)), v3(HALF - 1, y + 1.2, offset + sd * (width / 2 - 0.15)), steel, 0.8, 2);
-  } else {
-    block(offset, y, 0, width, 1.4, len, concrete);
-    block(offset, y - 2.2, 0, 1.4, 3, len, darkConcrete);
-    block(offset - width / 2 + 0.15, y + 0.9, 0, 0.3, 0.6, len, darkConcrete);
-    block(offset + width / 2 - 0.15, y + 0.9, 0, 0.3, 0.6, len, darkConcrete);
-    for (const sd of [-1, 1]) b.rail(v3(offset + sd * (width / 2 - 0.15), y + 1.2, -HALF + 1), v3(offset + sd * (width / 2 - 0.15), y + 1.2, HALF - 1), steel, 0.8, 2);
-  }
-}
-bridge(-30, 'x', -6, 4);
-bridge(42, 'z', -14, 3.5);
-bridge(-78, 'z', 10, 4);
-bridge(78, 'x', 12, 3);
+// One steel bridge crossing the void beneath the halo, offset from the centre.
+const by = -8;
+b.box(-9, by, 0, 3.6, 0.6, R * 2 - 9, metal);
+b.box(-9, by - 1.6, 0, 1.2, 2.6, R * 2 - 9, darkMetal);
+for (const sd of [-1, 1]) b.rail(v3(-9 + sd * 1.65, by + 0.3, -R + 5), v3(-9 + sd * 1.65, by + 0.3, R - 5), metal, 1.0, 2.2);
 
 // ---------- the observer's landing ----------
-block(0, -0.6, 28.75, 14, 1.2, 14.5, floorMat);             // slab, tied into the south wall
-block(0, -3.2, 31, 10, 4, 10, darkConcrete);                // corbel underneath
-block(0, 0.45, 21.65, 14, 0.9, 0.3, darkConcrete);          // low front parapet: you can look over it
-block(-6.85, 0.45, 28.75, 0.3, 0.9, 14.5, darkConcrete);    // side parapets
-block(6.85, 0.45, 28.75, 0.3, 0.9, 14.5, darkConcrete);
-block(0, 4, HALF - 0.1, 3.4, 8, 0.3, voidMat, false);       // the doorway you came through, behind you
+// A semicircular balcony cantilevered from the south wall, with a low steel-capped parapet.
+const LZ = R - 2;
+b.arc(0, LZ, 0, 9, -Math.PI / 2 - 0.0, Math.PI / 2, -1.2, 0, floorMat, 2);
+b.arc(0, LZ, 8.7, 9, -Math.PI / 2, Math.PI / 2, 0, 0.9, darkConcrete, 2);
+b.arc(0, LZ, 8.6, 9.1, -Math.PI / 2, Math.PI / 2, 0.9, 1.0, metal, 2);
+b.arc(0, LZ, 2, 9, -Math.PI / 2, Math.PI / 2, -4.5, -1.2, darkConcrete, 2);
+block(0, 4, R + 0.2, 3.4, 8, 0.3, voidMat, false);                              // the doorway you came through, behind you
 
-b.flush(scene, [voidMat]);
+b.flush(scene, [voidMat, glow]);
 
 // ---------- light ----------
-const ambient = new THREE.HemisphereLight(0xd6dddd, 0x5a5e5e, 1.6);
+const ambient = new THREE.HemisphereLight(0xd6dddd, 0x5a5e5e, 2.0);
 scene.add(ambient);
 // Sun enters only through the oculus: the roof casts shadows, so a bright patch lands on the walls.
 const sun = new THREE.DirectionalLight(0xf2f4f2, 3.2);
@@ -217,15 +187,14 @@ sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
 sun.shadow.camera.near = 50; sun.shadow.camera.far = 700;
 sun.shadow.bias = -0.0004;
 scene.add(sun, sun.target);
-// Soft bounce from the lit side so nothing collapses into pure black.
 const bounce = new THREE.DirectionalLight(0xb4bcbc, 0.8);
 bounce.position.set(30, -20, -40);
 scene.add(bounce);
 
-// Visible light shaft under the oculus, leaning the same way the sun does.
+// Visible light shaft under the round oculus, leaning the same way the sun does.
 const sunDir = sun.position.clone().normalize();
-const shaftLen = 200;
-const shaft = new THREE.Mesh(new THREE.BoxGeometry(O * 2 - 1, shaftLen, O * 2 - 1), beamMat);
+const shaftLen = 220;
+const shaft = new THREE.Mesh(new THREE.CylinderGeometry(O - 0.5, O - 0.5, shaftLen, 48, 1, true), beamMat);
 shaft.position.set(0, TOP, 0).addScaledVector(sunDir, -shaftLen / 2);
 shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), sunDir);
 scene.add(shaft);

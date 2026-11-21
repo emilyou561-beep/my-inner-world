@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { addSnow } from './snow';
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Batch, detailed, tex, aoComposer } from './kit';
 import './style.css';
 
@@ -74,74 +75,100 @@ const wRough = tex('/textures/lightwall_rough_2k.jpg');
 const wallMat = detailed(new THREE.MeshStandardMaterial({ color: 0xaaa9a3, map: wMap, normalMap: wNor, normalScale: new THREE.Vector2(0.14, 0.14), roughnessMap: wRough, roughness: 0.98 }), { streaks: 0.7 });
 const beamMat = detailed(new THREE.MeshStandardMaterial({ color: 0x86857f, map: wMap, normalMap: wNor, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: wRough, roughness: 0.99 }), { joints: 0.6, streaks: 0.4 });
 const capMat = detailed(new THREE.MeshStandardMaterial({ color: 0x9a9993, map: wMap, normalMap: wNor, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wRough, roughness: 0.99 }), { joints: 0, streaks: 0 });
-const steel = new THREE.MeshStandardMaterial({ color: 0x3c4142, roughness: 0.6, metalness: 0.4 });
 const voidMat = new THREE.MeshStandardMaterial({ color: 0x14181a, roughness: 1 });
 const skylightMat = new THREE.MeshBasicMaterial({ color: 0xdfe6e6 });
 
 const b = new Batch(8);
 
+// ---------------------------------------------------------------- metal
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const metal = new THREE.MeshStandardMaterial({ color: 0x6f7578, metalness: 0.9, roughness: 0.42, envMap, envMapIntensity: 0.9 });
+const darkMetal = new THREE.MeshStandardMaterial({ color: 0x3a3f42, metalness: 0.85, roughness: 0.5, envMap, envMapIntensity: 0.7 });
+const glow = new THREE.MeshStandardMaterial({ color: 0x0c0f10, emissive: 0xe0f1f5, emissiveIntensity: 2.4, roughness: 1 });
+
 // ---------------------------------------------------------------- shell
+// A taller, sparser hall: 42 m to the roof, one wide light slit down the axis, and a steel ring
+// gate on the far wall as the focal point. Column and floor materials are the approved ones.
+const H = 42;
 block(0, -0.45, 0, 130, 0.9, 170, floorMat);
-b.box(0, 28, 0, 130, 2, 170, beamMat);                                    // roof slab
-b.box(-63, 13, 0, 2, 28, 170, wallMat); b.box(63, 13, 0, 2, 28, 170, wallMat);
-b.box(0, 13, -83, 130, 28, 2, wallMat); b.box(0, 13, 83, 130, 28, 2, wallMat);
+b.box(0, H, 0, 130, 2, 170, beamMat);                                     // roof slab (cut by the slit below)
+b.box(-63, H / 2 - 1, 0, 2, H, 170, wallMat); b.box(63, H / 2 - 1, 0, 2, H, 170, wallMat);
+b.box(0, H / 2 - 1, -83, 130, H, 2, wallMat); b.box(0, H / 2 - 1, 83, 130, H, 2, wallMat);
 
-// ---------------------------------------------------------------- columns and coffered beam grid
-const COL_X = [-48, -32, -16, 16, 32, 48];
-const COL_Z: number[] = []; for (let z = -65; z <= 65; z += 20) COL_Z.push(z);
+// ---------------------------------------------------------------- columns with steel capitals
+const COL_X = [-40, -16, 16, 40];
+const COL_Z: number[] = []; for (let z = -60; z <= 60; z += 30) COL_Z.push(z);
 for (const x of COL_X) for (const z of COL_Z) {
-  block(x, 13, z, 3.8, 26, 3.8, columnMat);                               // approved column, unchanged
-  b.box(x, 0.12, z, 4.6, 0.24, 4.6, capMat);                               // thin base plinth
-  b.box(x, 24.9, z, 4.6, 0.5, 4.6, capMat);                                // stepped capital
-  b.box(x, 25.45, z, 5.6, 0.6, 5.6, capMat);
+  block(x, (H - 3) / 2, z, 3.8, H - 3, 3.8, columnMat);                    // approved column material
+  b.box(x, 0.35, z, 5, 0.7, 5, darkMetal);                                  // steel shoe
+  b.box(x, H - 5, z, 4.6, 1.2, 4.6, darkMetal);                             // flared steel capital
+  b.box(x, H - 3.9, z, 6.4, 1.0, 6.4, metal);
+  b.box(x, H - 3.0, z, 8.4, 0.8, 8.4, darkMetal);
 }
-// Primary beams on the column lines in both directions (previously misaligned with the columns).
-for (const z of COL_Z) b.box(0, 26.4, z, 126, 1.8, 2.6, beamMat);
-for (const x of COL_X) b.box(x, 26.4, 0, 2.6, 1.8, 166, beamMat);
-// Secondary ribs between them.
-for (let z = -75; z <= 75; z += 10) if (!COL_Z.includes(z)) b.box(0, 26.75, z, 126, 1.1, 0.9, beamMat);
-
-// Narrow cold skylight slots in the roof (kept from the approved layout), with deep reveals.
-for (const x of [-24, 0, 24]) {
-  const sky = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 142), skylightMat);
-  sky.rotation.x = Math.PI / 2; sky.position.set(x, 26.98, 0); scene.add(sky);
-  b.box(x - 0.85, 26.6, 0, 0.5, 0.8, 142, capMat);
-  b.box(x + 0.85, 26.6, 0, 0.5, 0.8, 142, capMat);
+// Deep beams only along the column lines (no secondary grid).
+for (const x of COL_X) b.box(x, H - 1.6, 0, 3, 2.6, 166, beamMat);
+for (const z of COL_Z) {
+  b.box(-40, H - 1.6, z, 46, 2.6, 3, beamMat);
+  b.box(40, H - 1.6, z, 46, 2.6, 3, beamMat);
 }
 
-// ---------------------------------------------------------------- walls: pilasters, skirting, vents, high window band
+// ---------------------------------------------------------------- the light slit
+// One 9 m wide opening runs the length of the roof between the two inner column lines.
+const SLIT = 9;
+const slitSky = new THREE.Mesh(new THREE.PlaneGeometry(SLIT, 160), skylightMat);
+slitSky.rotation.x = Math.PI / 2; slitSky.position.set(0, H + 3, 0); scene.add(slitSky);
+for (const sx of [-1, 1]) {
+  b.box(sx * (SLIT / 2 + 0.4), H - 0.4, 0, 0.8, 4.8, 160, darkMetal);       // steel reveal on each side
+  b.box(sx * (SLIT / 2 + 1.6), H - 2.4, 0, 1.6, 0.8, 160, metal);
+}
+for (let z = -75; z <= 75; z += 15) b.box(0, H + 0.4, z, SLIT + 1, 0.6, 0.5, darkMetal); // thin steel tie bars across the slit
+
+// ---------------------------------------------------------------- walls: tall slits instead of vents and windows
 for (const sx of [-1, 1]) {
   const wx = sx * 61.9;
-  for (const z of COL_Z) b.box(wx, 13, z, 0.8, 26, 2.4, wallMat);         // pilasters aligned with columns
-  b.box(sx * 61.75, 0.5, 0, 0.5, 1, 166, capMat);                          // skirting
+  for (const z of COL_Z) b.box(wx, H / 2, z, 0.8, H, 2.4, wallMat);       // pilasters on the column rows
   for (let i = 0; i < COL_Z.length - 1; i++) {
     const zc = (COL_Z[i] + COL_Z[i + 1]) / 2;
-    // low louvred vent in every bay
-    b.box(sx * 61.98, 2.2, zc, 0.05, 1.6, 4, voidMat);
-    for (let k = 0; k < 5; k++) b.box(sx * 61.85, 1.55 + k * 0.32, zc, 0.24, 0.06, 4, capMat);
-    // high clerestory band: dark glass, mullions, sill
-    b.box(sx * 61.97, 21.5, zc, 0.06, 2.2, 14, voidMat);
-    for (let m = -6; m <= 6; m += 1.5) b.box(sx * 61.9, 21.5, zc + m, 0.1, 2.2, 0.08, steel);
-    b.box(sx * 61.7, 20.3, zc, 0.6, 0.2, 14.8, capMat);
+    b.box(sx * 61.98, H / 2 - 2, zc, 0.06, H - 10, 1.4, voidMat);          // full-height dark slit
+    b.box(sx * 61.7, H / 2 - 2, zc - 1.05, 0.6, H - 9, 0.5, darkMetal);
+    b.box(sx * 61.7, H / 2 - 2, zc + 1.05, 0.6, H - 9, 0.5, darkMetal);
   }
+  b.box(sx * 61.75, 0.5, 0, 0.5, 1, 166, capMat);                          // skirting
 }
-for (const sz of [-1, 1]) {
-  b.box(0, 0.5, sz * 81.75, 126, 1, 0.5, capMat);
-  for (const x of COL_X) b.box(x, 13, sz * 81.6, 2.4, 26, 0.8, wallMat);
+b.box(0, 0.5, 81.75, 126, 1, 0.5, capMat);
+
+// ---------------------------------------------------------------- the ring gate (focal point)
+// A 30 m steel ring set into the far wall, a dark circular recess behind it, a light line inside,
+// and a glowing seam in the floor leading to it along the axis.
+{
+  const RZ = -81.9, RY = 18, RR = 15;
+  const recess = new THREE.Mesh(new THREE.CircleGeometry(RR - 0.4, 96), voidMat);
+  recess.position.set(0, RY, RZ + 0.02); scene.add(recess);
+  const ring = new THREE.TorusGeometry(RR, 1.3, 20, 160); ring.translate(0, RY, RZ + 1.0); b.push(ring, metal);
+  const outer = new THREE.TorusGeometry(RR + 2.4, 0.5, 12, 160); outer.translate(0, RY, RZ + 0.6); b.push(outer, darkMetal);
+  const line = new THREE.TorusGeometry(RR - 1.2, 0.16, 8, 160); line.translate(0, RY, RZ + 1.6); b.push(line, glow);
+  for (let i = 0; i < 20; i++) {
+    const a = (i / 20) * Math.PI * 2;
+    const g = new THREE.BoxGeometry(0.8, 3.2, 1.6); g.translate(0, RR + 1.4, 0); g.rotateZ(a); g.translate(0, RY, RZ + 1.0); b.push(g, darkMetal);
+  }
+  b.box(0, 1.5, RZ + 3, 10, 3, 4, beamMat);                        // threshold plinth under the ring
+  b.box(0, 0.015, -44, 0.07, 0.03, 72, glow);                               // thin light seam in the floor along the axis
+  b.box(0, 0.01, -44, 0.5, 0.02, 72, darkMetal);
 }
 
-b.flush(scene, [voidMat]);
+b.flush(scene, [voidMat, glow]);
 
 // ---------------------------------------------------------------- light
 RectAreaLightUniformsLib.init();
 const ambient = new THREE.HemisphereLight(0xdce5e8, 0x383a3a, 1.3); scene.add(ambient);
 const interiorFill = new THREE.DirectionalLight(0xc7d1d1, 0.5);
 interiorFill.position.set(-35, 20, -28); scene.add(interiorFill);
-// Soft light falling from the two skylight slots.
+// Soft light falling from the slit.
 const slotLights: THREE.RectAreaLight[] = [];
-for (const x of [-24, 0, 24]) {
-  const l = new THREE.RectAreaLight(0xe4ecec, 7, 1.2, 142);
-  l.position.set(x, 26.9, 0); l.lookAt(x, 0, 0);
+{
+  const l = new THREE.RectAreaLight(0xe4ecec, 5, SLIT, 160);
+  l.position.set(0, H - 0.5, 0); l.lookAt(0, 0, 0);
   scene.add(l); slotLights.push(l);
 }
 
@@ -172,9 +199,9 @@ const panel = document.querySelector<HTMLElement>('aside')!; const show = docume
 document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = '/classic-002.html'; });
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; }); show.addEventListener('click', () => { panel.hidden = false; show.hidden = true; });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-// Snow drifting down through the three skylight slots, lit by the slot light.
-const snowfall = [-24, 0, 24].map((x) => addSnow(scene, camera, renderer, {
-  box: [1.0, 120], spread: 3.5, center: new THREE.Vector3(x, 13.5, 0), height: 27,
-  count: 7000, size: 0.05, speed: 1.3, innerRadius: 1.5, opacity: 0.9, fog: 0.02,
-}));
+// Snow drifting down through the light slit.
+const snowfall = [addSnow(scene, camera, renderer, {
+  box: [SLIT - 1, 150], spread: 5, center: new THREE.Vector3(0, H / 2, 0), height: H,
+  count: 18000, size: 0.05, speed: 1.4, innerRadius: 1.5, opacity: 0.9, fog: 0.02,
+})];
 function animate() { requestAnimationFrame(animate); snowfall.forEach((s) => s.update()); composer.render(); } animate();
