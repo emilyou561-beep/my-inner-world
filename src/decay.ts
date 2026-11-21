@@ -206,12 +206,12 @@ export class Decay {
   }
 
   // A clump of dry, dead grass growing from a crack.
-  weeds(x: number, y: number, z: number, radius: number, seed: number, count = 40) {
+  weeds(x: number, y: number, z: number, radius: number, seed: number, count = 40, scale = 1) {
     const r = rng(seed);
     for (let i = 0; i < count; i++) {
       const a = r() * Math.PI * 2, d = Math.sqrt(r()) * radius;
-      const h = 0.25 + r() * 0.6;
-      const g = new THREE.ConeGeometry(0.018, h, 3, 1); g.translate(0, h / 2, 0);
+      const h = (0.25 + r() * 0.6) * scale;
+      const g = new THREE.ConeGeometry(0.018 * scale, h, 3, 1); g.translate(0, h / 2, 0);
       g.rotateZ((r() - 0.5) * 0.9); g.rotateX((r() - 0.5) * 0.9);
       g.translate(x + Math.cos(a) * d, y, z + Math.sin(a) * d); this.push(g, this.weed);
     }

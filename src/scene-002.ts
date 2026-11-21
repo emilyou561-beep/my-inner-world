@@ -7,6 +7,7 @@ import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { detailed as kitDetailed } from './kit';
 import { Decay } from './decay';
+import { rustMaterial, streakMaterial } from './rust';
 import './style.css';
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -58,8 +59,8 @@ const cNor = tex('/textures/lightwall_nor_gl_2k.jpg');
 const cRough = tex('/textures/lightwall_rough_2k.jpg');
 
 // Surface detail and weathering come from the shared kit (panel joints, tie holes, damp tide marks, rust, pitting).
-const detailed = (m: THREE.MeshStandardMaterial, joints: number) => kitDetailed(m, { joints, streaks: 1.2, weather: joints ? 1 : 0.35 });
-const concrete = detailed(new THREE.MeshStandardMaterial({ color: 0xa3a7a6, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: cRough, roughness: 0.97 }), 1);
+const detailed = (m: THREE.MeshStandardMaterial, joints: number) => kitDetailed(m, { joints, streaks: 2.4, weather: joints ? 1.9 : 1.1 });
+const concrete = detailed(new THREE.MeshStandardMaterial({ color: 0x959996, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: cRough, roughness: 0.97 }), 1);
 const darkConcrete = detailed(new THREE.MeshStandardMaterial({ color: 0x6c7070, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: cRough, roughness: 0.98 }), 1);
 const plainConcrete = detailed(new THREE.MeshStandardMaterial({ color: 0xb0b4b3, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: cRough, roughness: 0.98 }), 0);
 const groundMat = detailed(new THREE.MeshStandardMaterial({ color: 0xa4aaab, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.2, 0.2), roughnessMap: cRough, roughness: 0.98 }), 0);
@@ -181,6 +182,15 @@ const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 const metal = new THREE.MeshStandardMaterial({ color: 0x737a7d, metalness: 0.9, roughness: 0.4, envMap, envMapIntensity: 1.0 });
 const darkMetal = new THREE.MeshStandardMaterial({ color: 0x3d4245, metalness: 0.85, roughness: 0.5, envMap, envMapIntensity: 0.8 });
 const glow = new THREE.MeshStandardMaterial({ color: 0x0c0f10, emissive: 0xe4f3f6, emissiveIntensity: 2.2, roughness: 1 });
+// Rusted iron for the clock and the window frames; dark glass behind them.
+const rustIron = rustMaterial({ amount: 0.8, seed: 3, envMap, repeat: 2, tint: 0xd4b4a0 });
+const rustHeavy = rustMaterial({ amount: 1, seed: 5, envMap, repeat: 2, tint: 0xc8a48c });
+const darkGlass = new THREE.MeshStandardMaterial({ color: 0x0b0e0f, roughness: 0.12, metalness: 0.7, envMap, envMapIntensity: 0.45 });
+const streaks = streakMaterial();
+// A rust/water run decal hanging down a +z-facing concrete face from (x, yTop).
+function stain(x: number, yTop: number, z: number, w: number, len: number) {
+  const g = new THREE.PlaneGeometry(w, len); g.translate(x, yTop - len / 2, z); push(g, streaks);
+}
 
 // A tall, interlocking stack of hollow concrete boxes cantilevering in every direction, carried on
 // leaning slab legs. At its heart a massive square block holds the stopped clock.
@@ -200,16 +210,16 @@ const front = MZ + MD / 2;
 // Steel sleeve lining the aperture, with heavy rims front and back and a light line inside.
 {
   const sleeve = new THREE.CylinderGeometry(AR - 0.3, AR - 0.3, MD + 1, 128, 1, true);
-  sleeve.rotateX(Math.PI / 2); sleeve.translate(0, AY, MZ); push(sleeve, metal);
+  sleeve.rotateX(Math.PI / 2); sleeve.translate(0, AY, MZ); push(sleeve, rustIron);
   for (const [z, t] of [[front + 0.6, 1.6], [MZ - MD / 2 - 0.6, 1.2]] as [number, number][]) {
-    const rim = new THREE.TorusGeometry(AR + 0.4, t, 16, 160); rim.translate(0, AY, z); push(rim, darkMetal);
+    const rim = new THREE.TorusGeometry(AR + 0.4, t, 16, 160); rim.translate(0, AY, z); push(rim, rustHeavy);
   }
   const line = new THREE.TorusGeometry(AR - 0.45, 0.22, 8, 160); line.translate(0, AY, front - 4); push(line, glow);
   // radial steel ribs around the rim, like the stiffeners of a pressure door
   for (let i = 0; i < 24; i++) {
     const a = (i / 24) * Math.PI * 2;
     const g = new THREE.BoxGeometry(1.1, 7, 1.6);
-    g.translate(0, AR + 3, 0); g.rotateZ(a); g.translate(0, AY, front + 0.6); push(g, darkMetal);
+    g.translate(0, AR + 3, 0); g.rotateZ(a); g.translate(0, AY, front + 0.6); push(g, rustHeavy);
   }
 }
 // ---------------------------------------------------------------- the clock in the aperture
@@ -263,14 +273,14 @@ function hand(len: number, tail: number, width: number, depth: number, mat: THRE
   const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; pivot.add(m); scene.add(pivot);
   return pivot;
 }
-const handMat = new THREE.MeshStandardMaterial({ color: 0x24282a, metalness: 0.7, roughness: 0.55, envMap, envMapIntensity: 0.6 });
+const handMat = rustMaterial({ amount: 0.5, seed: 9, envMap, tint: 0x8a8a8a, repeat: 0.3 });
 const rustMat = new THREE.MeshStandardMaterial({ color: 0x5b3420, metalness: 0.4, roughness: 0.8 });
 const hourHand = hand(AR * 0.52, 4, 3.0, 0.6, handMat, CLOCK_Z + 0.05);
 const minuteHand = hand(AR * 0.86, 6, 1.7, 0.5, handMat, CLOCK_Z + 0.7);
 const secondHand = hand(AR * 0.8, 5, 0.35, 0.2, rustMat, CLOCK_Z + 1.25);
 {
   const hub = new THREE.CylinderGeometry(2.4, 2.6, 2.2, 48); hub.rotateX(Math.PI / 2); hub.translate(0, AY, CLOCK_Z + 0.9);
-  const m = new THREE.Mesh(hub, darkMetal); m.castShadow = true; scene.add(m);
+  const m = new THREE.Mesh(hub, rustHeavy); m.castShadow = true; scene.add(m);
 }
 const HOUR = 4 + 47 / 60, MIN = 47;            // stopped at 4:47
 hourHand.rotation.z = -(HOUR / 12) * Math.PI * 2;
@@ -300,8 +310,11 @@ function updateClock(dt: number, t: number) {
 }
 
 // ---------------------------------------------------------------- the stack
+const decay = new Decay(scene, { envMap });
 // A hollow box: four thick slabs, open at both ends along `open`. `back` adds a recessed inner wall.
-function frame(cx: number, cy: number, cz: number, w: number, h: number, d: number, t: number, open: 'x' | 'z', back = false) {
+let frameNo = 0;
+function frame(cx: number, cy: number, cz: number, w: number, h: number, d: number, t: number, open: 'x' | 'z', back = false, fill = true) {
+  const n = frameNo++;
   box(cx, cy + h / 2 - t / 2, cz, w, t, d, concrete);
   box(cx, cy - h / 2 + t / 2, cz, w, t, d, concrete);
   if (open === 'z') {
@@ -313,38 +326,47 @@ function frame(cx: number, cy: number, cz: number, w: number, h: number, d: numb
   }
   // a thickened drip edge under the front of the top slab
   box(cx, cy + h / 2 - t - 0.6, cz + d / 2 - 0.8, w, 1.2, 1.6, darkConcrete);
+  if (fill) glaze(cx, cy, cz, w, h, d, t, open, n);
+  // rust and water running down any wall that faces us
+  if (open === 'x') stain(cx, cy + h / 2 - t, cz + d / 2 + 0.06, w * 0.95, h - 2 * t);
+  // dry grass along the top edge, some hanging over
+  for (let k = 0; k < 3; k++) if ((n * 7 + k * 3) % 5 < 3) decay.weeds(cx + (k - 1) * w * 0.3, cy + h / 2, cz + d / 2 - 1.5, 2.5, n * 31 + k, 26, 3.2);
 }
-// A broad leaning slab leg from the ground (x0) to height `top`, tilted sideways by `lean` radians.
-function leg(x0: number, y0: number, z: number, top: number, lean: number, w: number, t: number) {
-  const len = (top - y0) / Math.cos(lean);
-  const geo = new THREE.BoxGeometry(w, len, t);
-  geo.translate(0, len / 2, 0); geo.rotateZ(-lean); geo.translate(x0, y0, z);
-  push(geo, plainConcrete);
+// Fill an opening with dark glass behind a rusted iron grid; every other box gets a coarse
+// industrial grid, the rest a fine one. Both ends are filled.
+function glaze(cx: number, cy: number, cz: number, w: number, h: number, d: number, t: number, open: 'x' | 'z', n: number) {
+  const span = (open === 'z' ? w : d) - 2 * t, ih = h - 2 * t, inset = 1.4;
+  const cell = n % 2 ? 5.5 : 2.6, bar = n % 2 ? 0.7 : 0.35;
+  const cols = Math.max(1, Math.round(span / cell)), rows = Math.max(1, Math.round(ih / (cell * 1.1)));
+  for (const end of [1, -1]) {
+    // position along the opening axis and a mapper from (u along span, v height) to a box
+    const at = (u: number, v: number, uw: number, vh: number, depth: number, mat: THREE.Material, off = 0) => {
+      if (open === 'z') box(cx + u, cy + v, cz + end * (d / 2 - inset - off), uw, vh, depth, mat);
+      else box(cx + end * (w / 2 - inset - off), cy + v, cz + u, depth, vh, uw, mat);
+    };
+    at(0, 0, span, ih, 0.12, darkGlass, 0.3);
+    for (let i = 0; i <= cols; i++) at(-span / 2 + (i * span) / cols, 0, bar, ih, bar, rustIron);
+    for (let j = 0; j <= rows; j++) at(0, -ih / 2 + (j * ih) / rows, span, bar, bar, rustIron);
+    // a heavier rusted sill and head
+    at(0, -ih / 2 + 0.4, span + 0.4, 0.8, 1.2, rustHeavy, -0.3);
+  }
 }
-
-// Ground level: an open forest of leaning legs carrying the first tier.
 const L1 = 42;
-for (const z of [-126, -174]) for (let i = 0; i < 9; i++) {
-  const x = -104 + i * 26 + (z < -150 ? 9 : 0);
-  leg(x, 0, z, L1, (i % 2 ? 1 : -1) * (0.12 + (i % 3) * 0.05), 9, 4);
-}
 // First tier: two wide boxes, one open to the front, one turned sideways.
 frame(-42, L1 + 15, MZ + 6, 128, 30, 62, 4, 'z', true);
 frame(62, L1 + 20, MZ - 4, 96, 40, 72, 4, 'x');
 // The clock block sits in a deep square frame, which projects past the clock face like a hood.
-frame(0, AY, MZ - 2, 118, 118, 46, 7, 'z');
+frame(0, AY, MZ - 2, 118, 118, 46, 7, 'z', false, false);
 // Left cluster, cantilevering forward and out.
 frame(-104, 100, -124, 72, 28, 46, 4, 'x', true);
 frame(-92, 146, -162, 62, 34, 60, 4, 'z', true);
 frame(-128, 178, -140, 48, 26, 52, 4, 'x');
 box(-78, 196, -150, 40, 30, 50, darkConcrete);
-leg(-120, L1 + 30, -124, 86, 0.2, 6, 3);
 // Right cluster.
 frame(102, 112, -140, 64, 40, 54, 4, 'z', true);
 frame(116, 160, -118, 52, 24, 72, 4, 'x');
 frame(80, 96, -110, 44, 24, 36, 3.5, 'x');
 frame(132, 72, -150, 40, 30, 44, 4, 'z');
-leg(132, L1, -150, 57, -0.15, 6, 3);
 // The upper tower: boxes turning and stepping as they climb into the fog.
 const upper: [number, number, number, number, number, number, 'x' | 'z', boolean][] = [
   [-10, 196, -150, 132, 36, 72, 'x', true], [28, 234, -138, 92, 40, 62, 'z', true], [-36, 268, -162, 104, 30, 58, 'x', false],
@@ -355,6 +377,14 @@ for (const [x, y, z, w, h, d, o, bk] of upper) frame(x, y, z, w, h, d, 4, o, bk)
 // A solid spine behind everything ties the stack together from the ground to the top.
 box(0, 205, -196, 56, 410, 34, darkConcrete);
 const coreFront = -179;
+// Rust bleeding from the clock rim down the block face, and long water runs down the spine.
+stain(0, AY - AR - 3, front + 0.06, 60, 12);
+stain(-32, AY + 48, front + 0.06, 26, 14); stain(33, AY + 48, front + 0.06, 24, 13);
+for (const [x, y, w, l] of [[-18, 400, 18, 120], [14, 300, 22, 140], [-8, 190, 30, 120], [10, 110, 20, 100]]) stain(x, y, coreFront + 0.06, w, l);
+// Dry grass at the foot of the spine and around the plateau.
+for (const [x, z] of [[-14, -176], [9, -175], [-30, -177], [26, -176]]) decay.weeds(x, 0, z, 2.2, x * 13 + 5, 40, 2);
+for (const [x, z] of [[-9, 13], [12, 6], [-20, -8], [24, -26], [6, -40], [-14, -70], [30, -84], [-36, -30]]) decay.weeds(x, 0, z, 1.6, x * 17 + z, 45, 1.4);
+decay.flush();
 
 // Tiny gate in the foot of the spine, seen between the legs: the only human-scale thing.
 box(0, 4.5, coreFront + 0.05, 3.6, 9, 0.2, voidMat);
