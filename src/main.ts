@@ -168,11 +168,8 @@ b.flush(scene, [voidMat, glow]);
 // Kept at human scale so the hall reads as enormous around them.
 {
   const d = new Decay(scene, { envMap });
-  d.tree(-5.5, 0, -24, 10, 11); d.weeds(-5.5, 0, -24, 1.6, 12, 70);        // a dead tree grown through a floor crack under the slit
-  d.tree(6.5, 0, -50, 6.5, 13); d.weeds(6.5, 0, -50, 1.2, 14, 40);
   d.puddle(3.2, 0, -14, 3, 1.8, 21); d.puddle(-3, 0, -36, 4.6, 2.3, 22); d.puddle(2.8, 0, -62, 3.4, 2, 23);   // melt water pooled under the slit
   d.puddle(-24, 0, 18, 5, 3, 24);
-  d.dump(12.5, 0, -27, 201, 7); d.dump(-19, 0, -6, 202, 5); d.dump(-37, 0, -48, 203, 8); d.dump(30, 0, 12, 204, 4);
   for (const [x, z] of [[16, -60], [-16, 30], [40, -30], [-40, 0], [16, 0]]) d.weeds(x + 2.4, 0, z + 1.5, 1.1, x * 7 + z, 30);
   d.flush();
 }

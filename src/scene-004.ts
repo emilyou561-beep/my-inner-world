@@ -269,12 +269,8 @@ b.flush(scene, [glass, voidMat, lamp]);
 // ---------------------------------------------------------------- decay
 {
   const d = new Decay(scene, { envMap: new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture });
-  d.tree(-14, 1.2, -12, 9, 41); d.weeds(-14, 1.2, -12, 1.5, 42, 60);
-  d.tree(17, 1.2, 9, 7, 43); d.weeds(17, 1.2, 9, 1.2, 44, 40);
-  d.tree(-36, 0, -40, 13, 45); d.tree(44, 0, -30, 11, 46); d.tree(20, 0, -52, 8, 47);
   d.puddle(6, 1.2, -9, 3, 2, 51); d.puddle(-9, 1.2, 11, 4, 2.4, 52); d.puddle(21, 1.2, -14, 2.4, 1.5, 53);
   d.puddle(0, 0, -47, 6, 3, 54); d.puddle(-30, 0, -46, 5, 3, 55);
-  d.dump(-21, 1.2, -5, 401, 6); d.dump(10, 1.2, 17, 402, 4); d.dump(26, 0, -44, 403, 7);
   for (let i = 0; i < 12; i++) { const a = i * 0.53; d.weeds(Math.sin(a) * 24, 1.2, -Math.cos(a) * 24, 0.8, 60 + i, 20); }
   d.flush();
 }

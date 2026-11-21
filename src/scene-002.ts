@@ -340,14 +340,10 @@ for (const [mat, geos] of batches) {
 }
 
 // ---------------------------------------------------------------- decay on the plateau
-// Dead trees, standing water and dumped chemical drums: tiny beside the 200 m slab.
+// Standing sewage water on the plateau.
 {
   const d = new Decay(scene, { envMap });
-  for (const [x, z, h, sd] of [[-18, 2, 9, 1], [24, -30, 11, 2], [-45, -60, 8, 3], [55, -95, 10, 4], [-12, -112, 7, 5], [70, -20, 9, 6], [-75, -15, 12, 7]]) {
-    d.tree(x, 0, z, h, sd); d.weeds(x, 0, z, 1.5, sd + 50, 50);
-  }
   for (const [x, z, rx, rz, sd] of [[-7, 10, 4, 2.5, 11], [18, -12, 6, 3.5, 12], [-25, -50, 9, 5, 13], [9, -80, 7, 4, 14], [-40, -100, 10, 6, 15], [35, -60, 8, 4, 16]]) d.puddle(x, 0, z, rx, rz, sd);
-  d.dump(10, 0, 5, 101, 7); d.dump(-15, 0, -22, 102, 5); d.dump(28, 0, -100, 103, 6);
   d.flush();
 }
 

@@ -177,14 +177,8 @@ b.flush(scene, [voidMat, glow]);
 // ---------- decay ----------
 {
   const d = new Decay(scene, { envMap });
-  // dead trees that rooted in cracks of the shaft wall, growing out over the void
-  for (const [a, y, h, s] of [[0.55, -12, 15, 31], [-0.9, 22, 10, 32], [1.9, -40, 17, 33], [-2.2, 6, 8, 34], [0.1, 40, 9, 30]]) {
-    const x = Math.sin(a) * (R - 0.2), z = -Math.cos(a) * (R - 0.2);
-    d.tree(x, y, z, h, s, 0.3, new THREE.Vector3(-Math.sin(a), 0.9, Math.cos(a)));
-  }
-  d.tree(-9, by + 0.3, 7, 5, 35); d.weeds(-9, by + 0.3, 7, 0.9, 36, 30);   // one on the bridge
   d.puddle(-9, by + 0.3, -5, 1.2, 0.8, 37);
-  d.puddle(2.6, 0, 26.5, 1.5, 1.0, 38); d.dump(-4.2, 0, 29, 301, 3); d.weeds(5, 0, 30.5, 1, 39, 30);   // on the landing
+  d.puddle(2.6, 0, 26.5, 1.5, 1.0, 38);
   d.flush();
 }
 
