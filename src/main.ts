@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addSnow } from './snow';
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 import { Batch, detailed, tex, aoComposer } from './kit';
 import './style.css';
@@ -171,4 +172,9 @@ const panel = document.querySelector<HTMLElement>('aside')!; const show = docume
 document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = '/classic-002.html'; });
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; }); show.addEventListener('click', () => { panel.hidden = false; show.hidden = true; });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-function animate() { requestAnimationFrame(animate); composer.render(); } animate();
+// Snow drifting down through the three skylight slots, lit by the slot light.
+const snowfall = [-24, 0, 24].map((x) => addSnow(scene, camera, renderer, {
+  box: [1.0, 120], spread: 3.5, center: new THREE.Vector3(x, 13.5, 0), height: 27,
+  count: 7000, size: 0.05, speed: 1.3, innerRadius: 1.5, opacity: 0.9, fog: 0.02,
+}));
+function animate() { requestAnimationFrame(animate); snowfall.forEach((s) => s.update()); composer.render(); } animate();

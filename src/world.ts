@@ -2,6 +2,7 @@
 // Keeps the project's rules: fixed viewpoint, drag to look around, same UI and scene navigation.
 import * as THREE from 'three';
 import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
+import { addSnow, type SnowOptions } from './snow';
 import './style.css';
 
 export interface WorldOptions {
@@ -13,6 +14,7 @@ export interface WorldOptions {
   next?: { label: string; href: string };
   pitch?: number;         // initial look angle (radians, + = up)
   height?: number;        // lift the viewpoint above the capture point (world units)
+  snow?: SnowOptions | false; // falling snow layer (scene units of this world)
 }
 
 export function mountWorld(o: WorldOptions) {
@@ -63,6 +65,7 @@ export function mountWorld(o: WorldOptions) {
   } as ConstructorParameters<typeof SplatMesh>[0]);
   if (new URLSearchParams(location.search).has("flip")) world.quaternion.set(1, 0, 0, 0);
   scene.add(world);
+  (window as unknown as { __world: SplatMesh }).__world = world;
 
   // ---------------------------------------------------------------- look around (fixed viewpoint)
   let yaw = 0, pitch = Number(q.get('p') ?? o.pitch ?? 0), dragging = false, lastX = 0, lastY = 0;
@@ -94,5 +97,6 @@ export function mountWorld(o: WorldOptions) {
   document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; });
   show.addEventListener('click', () => { panel.hidden = false; show.hidden = true; });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-  renderer.setAnimationLoop(() => renderer.render(scene, camera));
+  const snow = o.snow === false ? null : addSnow(scene, camera, renderer, o.snow ?? {});
+  renderer.setAnimationLoop(() => { snow?.update(); renderer.render(scene, camera); });
 }
