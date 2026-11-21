@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { addSnow } from './snow';
+import { addEye } from './eye';
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Batch, detailed, tex, aoComposer } from './kit';
@@ -156,6 +157,9 @@ b.box(0, 0.5, 81.75, 126, 1, 0.5, capMat);
   b.box(0, 0.015, -44, 0.07, 0.03, 72, glow);                               // thin light seam in the floor along the axis
   b.box(0, 0.01, -44, 0.5, 0.02, 72, darkMetal);
 }
+// A giant mechanical eye inside the ring: it looks around and blinks behind two steel lids.
+const lidMat = darkMetal.clone(); lidMat.side = THREE.DoubleSide;
+const eye = addEye(scene, { center: new THREE.Vector3(0, 18, -84), radius: 12, lidMaterial: lidMat, rimMaterial: metal, envMap });
 
 b.flush(scene, [voidMat, glow]);
 
@@ -204,4 +208,5 @@ const snowfall = [addSnow(scene, camera, renderer, {
   box: [SLIT - 1, 150], spread: 5, center: new THREE.Vector3(0, H / 2, 0), height: H,
   count: 18000, size: 0.05, speed: 1.4, innerRadius: 1.5, opacity: 0.9, fog: 0.02,
 })];
-function animate() { requestAnimationFrame(animate); snowfall.forEach((s) => s.update()); composer.render(); } animate();
+const clock = new THREE.Clock();
+function animate() { requestAnimationFrame(animate); const dt = Math.min(clock.getDelta(), 0.1); eye.update(dt, clock.elapsedTime); snowfall.forEach((s) => s.update()); composer.render(); } animate();
