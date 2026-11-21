@@ -31,7 +31,7 @@ const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.3, 12
 camera.position.set(0, 5.5, 22);
 camera.rotation.order = 'YXZ';
 let yaw = 0;
-let pitch = 0.3;
+let pitch = 0.38;
 camera.rotation.set(pitch, yaw, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -59,8 +59,8 @@ const cRough = tex('/textures/lightwall_rough_2k.jpg');
 
 // Surface detail and weathering come from the shared kit (panel joints, tie holes, damp tide marks, rust, pitting).
 const detailed = (m: THREE.MeshStandardMaterial, joints: number) => kitDetailed(m, { joints, streaks: 1.2, weather: joints ? 1 : 0.35 });
-const concrete = detailed(new THREE.MeshStandardMaterial({ color: 0xaeb3b3, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: cRough, roughness: 0.97 }), 1);
-const darkConcrete = detailed(new THREE.MeshStandardMaterial({ color: 0x8a8f8f, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: cRough, roughness: 0.98 }), 1);
+const concrete = detailed(new THREE.MeshStandardMaterial({ color: 0xa3a7a6, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: cRough, roughness: 0.97 }), 1);
+const darkConcrete = detailed(new THREE.MeshStandardMaterial({ color: 0x6c7070, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: cRough, roughness: 0.98 }), 1);
 const plainConcrete = detailed(new THREE.MeshStandardMaterial({ color: 0xb0b4b3, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: cRough, roughness: 0.98 }), 0);
 const groundMat = detailed(new THREE.MeshStandardMaterial({ color: 0xa4aaab, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(0.2, 0.2), roughnessMap: cRough, roughness: 0.98 }), 0);
 const glass = new THREE.MeshStandardMaterial({ color: 0x2b3637, roughness: 0.32, metalness: 0.15 });
@@ -72,6 +72,7 @@ const voidMat = new THREE.MeshStandardMaterial({ color: 0x0f1213, roughness: 1 }
 const batches = new Map<THREE.Material, THREE.BufferGeometry[]>();
 const TILE = 9;
 function push(geo: THREE.BufferGeometry, mat: THREE.Material) {
+  if (geo.index) geo = geo.toNonIndexed();   // mixed indexed/non-indexed parts would fail to merge
   if (!batches.has(mat)) batches.set(mat, []);
   batches.get(mat)!.push(geo);
 }
@@ -181,10 +182,13 @@ const metal = new THREE.MeshStandardMaterial({ color: 0x737a7d, metalness: 0.9, 
 const darkMetal = new THREE.MeshStandardMaterial({ color: 0x3d4245, metalness: 0.85, roughness: 0.5, envMap, envMapIntensity: 0.8 });
 const glow = new THREE.MeshStandardMaterial({ color: 0x0c0f10, emissive: 0xe4f3f6, emissiveIntensity: 2.2, roughness: 1 });
 
-const MZ = -150, MD = 24, MW = 140, MH = 200, AY = 96, AR = 34;
+// A tall, interlocking stack of hollow concrete boxes cantilevering in every direction, carried on
+// leaning slab legs. At its heart a massive square block holds the stopped clock.
+const MZ = -150, MD = 28, AY = 122, AR = 34, CW = 100;
+// Clock block: a solid square slab pierced by the round clock aperture.
 {
   const shape = new THREE.Shape();
-  shape.moveTo(-MW / 2, 0); shape.lineTo(MW / 2, 0); shape.lineTo(MW / 2, MH); shape.lineTo(-MW / 2, MH); shape.lineTo(-MW / 2, 0);
+  shape.moveTo(-CW / 2, AY - CW / 2); shape.lineTo(CW / 2, AY - CW / 2); shape.lineTo(CW / 2, AY + CW / 2); shape.lineTo(-CW / 2, AY + CW / 2); shape.lineTo(-CW / 2, AY - CW / 2);
   const hole = new THREE.Path(); hole.absarc(0, AY, AR, 0, Math.PI * 2, true); shape.holes.push(hole);
   const geo = new THREE.ExtrudeGeometry(shape, { depth: MD, bevelEnabled: false, curveSegments: 96 });
   const uv = geo.attributes.uv as THREE.BufferAttribute;
@@ -295,34 +299,72 @@ function updateClock(dt: number, t: number) {
   secondHand.rotation.z = Math.PI + Math.sin(t * 1.3) * 0.05 + s.v * 0.02;
 }
 
-// Horizontal reveal bands across the face, interrupted by the aperture.
-for (const y of [24, 48, 150, 174]) box(0, y, front + 0.25, MW, 0.9, 0.5, darkConcrete);
-for (const y of [72, 120]) for (const sx of [-1, 1]) box(sx * (AR + 22), y, front + 0.25, MW / 2 - AR - 6, 0.9, 0.5, darkConcrete);
-// Steel cladding fins on the two outer thirds of the face.
-for (const sx of [-1, 1]) for (let i = 0; i < 7; i++) {
-  const x = sx * (MW / 2 - 5 - i * 3.2);
-  box(x, MH / 2, front + 0.7, 0.5, MH - 6, 1.4, darkMetal);
+// ---------------------------------------------------------------- the stack
+// A hollow box: four thick slabs, open at both ends along `open`. `back` adds a recessed inner wall.
+function frame(cx: number, cy: number, cz: number, w: number, h: number, d: number, t: number, open: 'x' | 'z', back = false) {
+  box(cx, cy + h / 2 - t / 2, cz, w, t, d, concrete);
+  box(cx, cy - h / 2 + t / 2, cz, w, t, d, concrete);
+  if (open === 'z') {
+    for (const sx of [-1, 1]) box(cx + sx * (w / 2 - t / 2), cy, cz, t, h - 2 * t, d, concrete);
+    if (back) box(cx, cy, cz - d * 0.15, w - 2 * t, h - 2 * t, t * 0.8, darkConcrete);
+  } else {
+    for (const sz of [-1, 1]) box(cx, cy, cz + sz * (d / 2 - t / 2), w, h - 2 * t, t, concrete);
+    if (back) box(cx - w * 0.15, cy, cz, t * 0.8, h - 2 * t, d - 2 * t, darkConcrete);
+  }
+  // a thickened drip edge under the front of the top slab
+  box(cx, cy + h / 2 - t - 0.6, cz + d / 2 - 0.8, w, 1.2, 1.6, darkConcrete);
 }
-// The slab's crown: a thin steel parapet and two antenna masts lost in the fog.
-box(0, MH + 1, MZ, MW + 2, 2, MD + 2, darkMetal);
-for (const sx of [-1, 1]) { box(sx * 44, MH + 30, MZ, 1.4, 60, 1.4, metal); box(sx * 44, MH + 2.5, MZ, 6, 3, 6, darkMetal); }
-
-// Tiny gate at the foot, under the aperture: the only human-scale thing on the face.
-box(0, 4.5, front + 0.05, 3.6, 9, 0.2, voidMat);
-box(-2.5, 4.8, front + 0.8, 1.4, 9.6, 1.6, metal);
-box(2.5, 4.8, front + 0.8, 1.4, 9.6, 1.6, metal);
-box(0, 10.1, front + 0.8, 6.4, 1, 1.6, metal);
-box(0, 9.2, front + 0.3, 3.6, 0.18, 0.4, glow);
-// A long, low ramp leading from the plateau edge to the gate, with steel edge lines.
-box(0, 0.12, (front + 2 + 8) / 2, 10, 0.24, front + 2 - 8 > 0 ? front - 6 : 8 - front - 2, plainConcrete);
-for (const sx of [-1, 1]) box(sx * 5.1, 0.3, (front + 8) / 2, 0.2, 0.4, 8 - front, metal);
-
-// Two leaning buttresses brace the slab from the plateau.
-for (const sx of [-1, 1]) {
-  strut(v3(sx * 100, 0, -100), v3(sx * 66, 150, MZ), 9, darkConcrete);
-  strut(v3(sx * 100, 0, -100), v3(sx * 66, 150, MZ), 1.2, metal);   // steel spine inset into the buttress edge
-  box(sx * 100, 3, -100, 16, 6, 16, darkConcrete);                  // footing
+// A broad leaning slab leg from the ground (x0) to height `top`, tilted sideways by `lean` radians.
+function leg(x0: number, y0: number, z: number, top: number, lean: number, w: number, t: number) {
+  const len = (top - y0) / Math.cos(lean);
+  const geo = new THREE.BoxGeometry(w, len, t);
+  geo.translate(0, len / 2, 0); geo.rotateZ(-lean); geo.translate(x0, y0, z);
+  push(geo, plainConcrete);
 }
+
+// Ground level: an open forest of leaning legs carrying the first tier.
+const L1 = 42;
+for (const z of [-126, -174]) for (let i = 0; i < 9; i++) {
+  const x = -104 + i * 26 + (z < -150 ? 9 : 0);
+  leg(x, 0, z, L1, (i % 2 ? 1 : -1) * (0.12 + (i % 3) * 0.05), 9, 4);
+}
+// First tier: two wide boxes, one open to the front, one turned sideways.
+frame(-42, L1 + 15, MZ + 6, 128, 30, 62, 4, 'z', true);
+frame(62, L1 + 20, MZ - 4, 96, 40, 72, 4, 'x');
+// The clock block sits in a deep square frame, which projects past the clock face like a hood.
+frame(0, AY, MZ - 2, 118, 118, 46, 7, 'z');
+// Left cluster, cantilevering forward and out.
+frame(-104, 100, -124, 72, 28, 46, 4, 'x', true);
+frame(-92, 146, -162, 62, 34, 60, 4, 'z', true);
+frame(-128, 178, -140, 48, 26, 52, 4, 'x');
+box(-78, 196, -150, 40, 30, 50, darkConcrete);
+leg(-120, L1 + 30, -124, 86, 0.2, 6, 3);
+// Right cluster.
+frame(102, 112, -140, 64, 40, 54, 4, 'z', true);
+frame(116, 160, -118, 52, 24, 72, 4, 'x');
+frame(80, 96, -110, 44, 24, 36, 3.5, 'x');
+frame(132, 72, -150, 40, 30, 44, 4, 'z');
+leg(132, L1, -150, 57, -0.15, 6, 3);
+// The upper tower: boxes turning and stepping as they climb into the fog.
+const upper: [number, number, number, number, number, number, 'x' | 'z', boolean][] = [
+  [-10, 196, -150, 132, 36, 72, 'x', true], [28, 234, -138, 92, 40, 62, 'z', true], [-36, 268, -162, 104, 30, 58, 'x', false],
+  [12, 302, -148, 72, 38, 72, 'z', true], [44, 336, -166, 84, 30, 52, 'x', false], [-22, 368, -150, 62, 34, 62, 'z', true],
+  [18, 400, -160, 70, 30, 46, 'x', false],
+];
+for (const [x, y, z, w, h, d, o, bk] of upper) frame(x, y, z, w, h, d, 4, o, bk);
+// A solid spine behind everything ties the stack together from the ground to the top.
+box(0, 205, -196, 56, 410, 34, darkConcrete);
+const coreFront = -179;
+
+// Tiny gate in the foot of the spine, seen between the legs: the only human-scale thing.
+box(0, 4.5, coreFront + 0.05, 3.6, 9, 0.2, voidMat);
+box(-2.5, 4.8, coreFront + 0.8, 1.4, 9.6, 1.6, metal);
+box(2.5, 4.8, coreFront + 0.8, 1.4, 9.6, 1.6, metal);
+box(0, 10.1, coreFront + 0.8, 6.4, 1, 1.6, metal);
+box(0, 9.2, coreFront + 0.3, 3.6, 0.18, 0.4, glow);
+// A long, low ramp from the plateau edge to the gate, with steel edge lines.
+box(0, 0.12, (coreFront + 8) / 2, 10, 0.24, 8 - coreFront, plainConcrete);
+for (const sx of [-1, 1]) box(sx * 5.1, 0.3, (coreFront + 8) / 2, 0.2, 0.4, 8 - coreFront, metal);
 
 // Far monoliths, almost dissolved in the fog: the city-scale depth behind.
 box(-190, 140, -330, 60, 280, 40, plainConcrete);
@@ -348,13 +390,13 @@ for (const [mat, geos] of batches) {
 }
 
 // ---------------------------------------------------------------- light
-const hemi = new THREE.HemisphereLight(0xe6eded, 0x70726e, 2.1);
+const hemi = new THREE.HemisphereLight(0xe6eded, 0x2c2e2c, 1.55);
 scene.add(hemi);
-const key = new THREE.DirectionalLight(0xf0f3f2, 0.9);           // weak, high, soft: overcast sky dome
-key.position.set(-70, 160, 90);
+const key = new THREE.DirectionalLight(0xf0f3f2, 1.5);           // weak, high, soft: overcast sky dome
+key.position.set(-60, 320, 30);           // high overhead: the insides of the boxes fall into shadow
 key.castShadow = true;
 key.shadow.mapSize.set(4096, 4096);
-Object.assign(key.shadow.camera, { left: -140, right: 140, top: 140, bottom: -140, near: 10, far: 500 });
+Object.assign(key.shadow.camera, { left: -260, right: 260, top: 260, bottom: -260, near: 10, far: 900 });
 key.shadow.radius = 6;
 key.shadow.bias = -0.0003;
 scene.add(key);
@@ -363,8 +405,8 @@ scene.add(key);
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
-gtao.updateGtaoMaterial({ radius: 2.5, distanceExponent: 1.4, thickness: 3, scale: 1.2, samples: 16 });
-gtao.blendIntensity = 0.9;
+gtao.updateGtaoMaterial({ radius: 9, distanceExponent: 1.1, thickness: 12, scale: 1.3, samples: 16 });
+gtao.blendIntensity = 1.0;
 composer.addPass(gtao);
 composer.addPass(new OutputPass());
 
@@ -388,7 +430,7 @@ const lightInput = document.querySelector<HTMLInputElement>('#light')!;
 const fogValue = document.querySelector<HTMLOutputElement>('#fog-value')!;
 const lightValue = document.querySelector<HTMLOutputElement>('#light-value')!;
 fogInput.addEventListener('input', () => { const v = Number(fogInput.value); (scene.fog as THREE.FogExp2).density = v; fogValue.textContent = v.toFixed(4); });
-lightInput.addEventListener('input', () => { const v = Number(lightInput.value); hemi.intensity = 2.1 * v; key.intensity = 0.9 * v; lightValue.textContent = v.toFixed(1); });
+lightInput.addEventListener('input', () => { const v = Number(lightInput.value); hemi.intensity = 1.55 * v; key.intensity = 1.5 * v; lightValue.textContent = v.toFixed(1); });
 const panel = document.querySelector<HTMLElement>('aside')!;
 const show = document.querySelector<HTMLButtonElement>('#show')!;
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; });
