@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { addSnow } from './snow';
 import { addEye } from './eye';
 import { Decay } from './decay';
@@ -98,15 +99,42 @@ b.box(0, H, 0, 130, 2, 170, beamMat);                                     // roo
 b.box(-63, H / 2 - 1, 0, 2, H, 170, wallMat); b.box(63, H / 2 - 1, 0, 2, H, 170, wallMat);
 b.box(0, H / 2 - 1, -83, 130, H, 2, wallMat); b.box(0, H / 2 - 1, 83, 130, H, 2, wallMat);
 
-// ---------------------------------------------------------------- columns with steel capitals
+// ---------------------------------------------------------------- columns: bare concrete blades
+// Modelled on flood-control caverns (Tokyo's G-Cans tank: plain pillars about 2 m by 7 m, no capital,
+// no base, straight into the ceiling beams). Each blade is 3.2 m by 12 m, long side along the hall,
+// rows every 20 m so they read as a forest. The only marks are pour joints and a flood line at the foot.
 const COL_X = [-40, -16, 16, 40];
-const COL_Z: number[] = []; for (let z = -60; z <= 60; z += 30) COL_Z.push(z);
+const COL_Z: number[] = []; for (let z = -70; z <= 70; z += 20) COL_Z.push(z);
+const BW = 3.2, BD = 12;
+const jointMat = new THREE.MeshStandardMaterial({ color: 0x6e6c67, roughness: 1 });
 for (const x of COL_X) for (const z of COL_Z) {
-  block(x, (H - 3) / 2, z, 3.8, H - 3, 3.8, columnMat);                    // approved column material
-  b.box(x, 0.35, z, 5, 0.7, 5, darkMetal);                                  // steel shoe
-  b.box(x, H - 5, z, 4.6, 1.2, 4.6, darkMetal);                             // flared steel capital
-  b.box(x, H - 3.9, z, 6.4, 1.0, 6.4, metal);
-  b.box(x, H - 3.0, z, 8.4, 0.8, 8.4, darkMetal);
+  block(x, (H - 3) / 2, z, BW, H - 3, BD, columnMat);                        // approved column material
+  for (let y = 3.6; y < H - 4; y += 3.6) b.box(x, y, z, BW + 0.04, 0.07, BD + 0.04, jointMat);   // pour lift joints
+}
+// Flood line: the hall has been flooded; mud and damp stain every blade to ~5 m with a crisp tide mark.
+{
+  const c = document.createElement('canvas'); c.width = 256; c.height = 512; const g = c.getContext('2d')!;
+  const grad = g.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0, 'rgba(60,54,44,0)'); grad.addColorStop(0.34, 'rgba(60,54,44,0)');
+  grad.addColorStop(0.36, 'rgba(58,52,42,0.75)'); grad.addColorStop(0.5, 'rgba(66,60,48,0.5)'); grad.addColorStop(1, 'rgba(48,42,34,0.85)');
+  g.fillStyle = grad; g.fillRect(0, 0, 256, 512);
+  g.fillStyle = 'rgba(45,40,32,0.8)'; g.fillRect(0, 0.345 * 512, 256, 3);                       // tide mark
+  g.fillStyle = 'rgba(205,200,188,0.25)'; g.fillRect(0, 0.33 * 512, 256, 6);                     // pale salt above it
+  for (let i = 0; i < 40; i++) {                                                                // drips running down from the line
+    const x = Math.random() * 256, len = 20 + Math.random() * 180;
+    const d = g.createLinearGradient(0, 0.36 * 512, 0, 0.36 * 512 + len);
+    d.addColorStop(0, 'rgba(40,36,30,0.45)'); d.addColorStop(1, 'rgba(40,36,30,0)');
+    g.fillStyle = d; g.fillRect(x, 0.36 * 512, 1 + Math.random() * 3, len);
+  }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = THREE.RepeatWrapping;
+  const floodMat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 });
+  const FH = 7.5, parts: THREE.BufferGeometry[] = [];
+  for (const x of COL_X) for (const z of COL_Z) {
+    for (const [w, rotY, ox, oz] of [[BW, 0, 0, BD / 2 + 0.02], [BW, Math.PI, 0, -BD / 2 - 0.02], [BD, Math.PI / 2, BW / 2 + 0.02, 0], [BD, -Math.PI / 2, -BW / 2 - 0.02, 0]] as const) {
+      const pg = new THREE.PlaneGeometry(w, FH); pg.translate(0, FH / 2, 0); pg.rotateY(rotY); pg.translate(x + ox, 0, z + oz); parts.push(pg);
+    }
+  }
+  scene.add(new THREE.Mesh(mergeGeometries(parts), floodMat));
 }
 // Deep beams only along the column lines (no secondary grid).
 for (const x of COL_X) b.box(x, H - 1.6, 0, 3, 2.6, 166, beamMat);
