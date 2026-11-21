@@ -6,6 +6,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { detailed as kitDetailed } from './kit';
+import { Decay } from './decay';
 import './style.css';
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -207,6 +208,93 @@ const front = MZ + MD / 2;
     g.translate(0, AR + 3, 0); g.rotateZ(a); g.translate(0, AY, front + 0.6); push(g, darkMetal);
   }
 }
+// ---------------------------------------------------------------- the clock in the aperture
+// A stopped clock fills the round opening. Its hour hand is seized; the minute hand keeps trying to
+// move on, jerks forward, shudders and falls back, never getting anywhere. A loose second hand hangs.
+function clockFace(): THREE.CanvasTexture {
+  const S = 2048, c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d')!; const C = S / 2;
+  g.fillStyle = '#b9bbb4'; g.fillRect(0, 0, S, S);
+  // grime: darker toward the rim, mottled patches
+  const v = g.createRadialGradient(C, C, S * 0.15, C, C, S * 0.5);
+  v.addColorStop(0, 'rgba(60,58,50,0)'); v.addColorStop(1, 'rgba(50,46,38,0.55)'); g.fillStyle = v; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 120; i++) {
+    const x = Math.random() * S, y = Math.random() * S, r = 20 + Math.random() * 160;
+    const p = g.createRadialGradient(x, y, 0, x, y, r);
+    p.addColorStop(0, `rgba(${60 + Math.random() * 40},${55 + Math.random() * 20},40,${0.08 + Math.random() * 0.18})`); p.addColorStop(1, 'rgba(60,55,40,0)');
+    g.fillStyle = p; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  // marks: 60 minute ticks, 12 heavy hour bars
+  g.translate(C, C);
+  for (let i = 0; i < 60; i++) {
+    g.save(); g.rotate((i / 60) * Math.PI * 2);
+    if (i % 5 === 0) { g.fillStyle = '#26292a'; g.fillRect(-26, -C * 0.93, 52, C * 0.17); }
+    else { g.fillStyle = '#3a3d3d'; g.fillRect(-7, -C * 0.93, 14, C * 0.06); }
+    g.restore();
+  }
+  g.strokeStyle = '#2a2d2d'; g.lineWidth = 10; g.beginPath(); g.arc(0, 0, C * 0.95, 0, Math.PI * 2); g.stroke();
+  g.lineWidth = 4; g.beginPath(); g.arc(0, 0, C * 0.72, 0, Math.PI * 2); g.stroke();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  // rust and damp drips running down from the hour bars
+  for (let i = 0; i < 70; i++) {
+    const a = Math.random() * Math.PI * 2, rr = C * (0.3 + Math.random() * 0.62);
+    const x = C + Math.sin(a) * rr, y = C - Math.cos(a) * rr;
+    const rust = Math.random() < 0.5;
+    const len = 60 + Math.random() * 420;
+    const gr = g.createLinearGradient(0, y, 0, y + len);
+    gr.addColorStop(0, rust ? 'rgba(110,55,20,0.6)' : 'rgba(40,40,34,0.45)'); gr.addColorStop(1, 'rgba(60,40,20,0)');
+    g.fillStyle = gr; g.fillRect(x, y, 4 + Math.random() * 12, len);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+const CLOCK_Z = front - 6;
+const clockMat = new THREE.MeshStandardMaterial({ map: clockFace(), roughness: 0.85 });
+const face = new THREE.Mesh(new THREE.CircleGeometry(AR - 0.25, 160), clockMat);
+face.position.set(0, AY, CLOCK_Z); face.receiveShadow = true; scene.add(face);
+function hand(len: number, tail: number, width: number, depth: number, mat: THREE.Material, z: number) {
+  const pivot = new THREE.Group(); pivot.position.set(0, AY, z);
+  const shape = new THREE.Shape();
+  shape.moveTo(-width / 2, -tail); shape.lineTo(width / 2, -tail); shape.lineTo(width * 0.32, len * 0.92); shape.lineTo(0, len); shape.lineTo(-width * 0.32, len * 0.92); shape.lineTo(-width / 2, -tail);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+  const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; pivot.add(m); scene.add(pivot);
+  return pivot;
+}
+const handMat = new THREE.MeshStandardMaterial({ color: 0x24282a, metalness: 0.7, roughness: 0.55, envMap, envMapIntensity: 0.6 });
+const rustMat = new THREE.MeshStandardMaterial({ color: 0x5b3420, metalness: 0.4, roughness: 0.8 });
+const hourHand = hand(AR * 0.52, 4, 3.0, 0.6, handMat, CLOCK_Z + 0.05);
+const minuteHand = hand(AR * 0.86, 6, 1.7, 0.5, handMat, CLOCK_Z + 0.7);
+const secondHand = hand(AR * 0.8, 5, 0.35, 0.2, rustMat, CLOCK_Z + 1.25);
+{
+  const hub = new THREE.CylinderGeometry(2.4, 2.6, 2.2, 48); hub.rotateX(Math.PI / 2); hub.translate(0, AY, CLOCK_Z + 0.9);
+  const m = new THREE.Mesh(hub, darkMetal); m.castShadow = true; scene.add(m);
+}
+const HOUR = 4 + 47 / 60, MIN = 47;            // stopped at 4:47
+hourHand.rotation.z = -(HOUR / 12) * Math.PI * 2;
+const minuteBase = -(MIN / 60) * Math.PI * 2;
+const clockState = { a: minuteBase, v: 0, target: minuteBase, next: 1.2, hold: 0, burst: 0 };
+function updateClock(dt: number, t: number) {
+  const s = clockState;
+  if (t > s.next) {
+    if (s.burst > 0) {                          // a run of small, nervous twitches
+      s.target = minuteBase - (Math.random() - 0.3) * 0.05; s.burst--; s.next = t + 0.05 + Math.random() * 0.09;
+    } else if (Math.random() < 0.35) {
+      s.burst = 3 + Math.floor(Math.random() * 6); s.next = t;
+    } else {                                    // try to reach the next minute, fail, fall back
+      s.target = minuteBase - (Math.PI * 2 / 60) * (0.6 + Math.random() * 0.5);
+      s.hold = t + 0.12 + Math.random() * 0.35; s.next = t + 0.6 + Math.random() * 1.6;
+    }
+  }
+  if (s.hold && t > s.hold) { s.target = minuteBase; s.hold = 0; }
+  // stiff, under-damped spring: overshoot and shudder on every move
+  const k = 900, c = 14;
+  const steps = Math.ceil(dt / 0.004);
+  for (let i = 0; i < steps; i++) { const h = dt / steps; s.v += (k * (s.target - s.a) - c * s.v) * h; s.a += s.v * h; }
+  const tremor = Math.sin(t * 61) * 0.0025 + Math.sin(t * 37.7) * 0.002;
+  minuteHand.rotation.z = s.a + tremor;
+  // the loose second hand hangs straight down and sways with each jolt of the mechanism
+  secondHand.rotation.z = Math.PI + Math.sin(t * 1.3) * 0.05 + s.v * 0.02;
+}
+
 // Horizontal reveal bands across the face, interrupted by the aperture.
 for (const y of [24, 48, 150, 174]) box(0, y, front + 0.25, MW, 0.9, 0.5, darkConcrete);
 for (const y of [72, 120]) for (const sx of [-1, 1]) box(sx * (AR + 22), y, front + 0.25, MW / 2 - AR - 6, 0.9, 0.5, darkConcrete);
@@ -249,6 +337,18 @@ for (const [mat, geos] of batches) {
   mesh.castShadow = mat !== glass && mat !== glow;
   mesh.receiveShadow = true;
   scene.add(mesh);
+}
+
+// ---------------------------------------------------------------- decay on the plateau
+// Dead trees, standing water and dumped chemical drums: tiny beside the 200 m slab.
+{
+  const d = new Decay(scene, { envMap });
+  for (const [x, z, h, sd] of [[-18, 2, 9, 1], [24, -30, 11, 2], [-45, -60, 8, 3], [55, -95, 10, 4], [-12, -112, 7, 5], [70, -20, 9, 6], [-75, -15, 12, 7]]) {
+    d.tree(x, 0, z, h, sd); d.weeds(x, 0, z, 1.5, sd + 50, 50);
+  }
+  for (const [x, z, rx, rz, sd] of [[-7, 10, 4, 2.5, 11], [18, -12, 6, 3.5, 12], [-25, -50, 9, 5, 13], [9, -80, 7, 4, 14], [-40, -100, 10, 6, 15], [35, -60, 8, 4, 16]]) d.puddle(x, 0, z, rx, rz, sd);
+  d.dump(10, 0, 5, 101, 7); d.dump(-15, 0, -22, 102, 5); d.dump(28, 0, -100, 103, 6);
+  d.flush();
 }
 
 // ---------------------------------------------------------------- light
@@ -301,8 +401,11 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
 });
+const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  updateClock(dt, clock.elapsedTime);
   composer.render();
 }
 animate();
