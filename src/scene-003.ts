@@ -23,7 +23,7 @@ app.innerHTML = `
 
 // ---------- renderer / camera ----------
 const scene = new THREE.Scene();
-const background = new THREE.Color(0x737a7d);
+const background = new THREE.Color(0x4b5153);   // darker haze: the shaft falls away into gloom
 scene.background = background;
 scene.fog = new THREE.FogExp2(background, 0.0038);
 
@@ -60,13 +60,13 @@ const wallColor = texture('/textures/lightwall_diff_2k.jpg', true);
 const wallNormal = texture('/textures/lightwall_nor_gl_2k.jpg');
 const wallRough = texture('/textures/lightwall_rough_2k.jpg');
 
-const concrete = detailed(new THREE.MeshStandardMaterial({ color: 0xb6bbbd, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.98 }), { floorY: -180, cyl: [0, 0], streaks: 1.9, weather: 1.7 });
-const darkConcrete = detailed(new THREE.MeshStandardMaterial({ color: 0x868b8d, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.99 }), { joints: 0.7, streaks: 1.4, weather: 1.5, floorY: -180, cyl: [0, 0] });
+const concrete = detailed(new THREE.MeshStandardMaterial({ color: 0xb6bbbd, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.98 }), { floorY: -180, cyl: [0, 0], streaks: 0, weather: 1.2 });
+const darkConcrete = detailed(new THREE.MeshStandardMaterial({ color: 0x868b8d, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.99 }), { joints: 0.7, streaks: 0, weather: 1.1, floorY: -180, cyl: [0, 0] });
 const stairMat = detailed(new THREE.MeshStandardMaterial({ color: 0xaeb3b5, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.98 }), { joints: 0, streaks: 0 });
 const floorMat = new THREE.MeshStandardMaterial({ color: 0xa6abad, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: wallRough, roughness: 0.97 });
 const voidMat = new THREE.MeshStandardMaterial({ color: 0x121516, roughness: 1 });
 const skyMat = new THREE.MeshBasicMaterial({ color: 0xe9eeee, fog: false });
-const beamMat = new THREE.MeshBasicMaterial({ color: 0xdfe6e6, transparent: true, opacity: 0.055, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+const beamMat = new THREE.MeshBasicMaterial({ color: 0xdfe6e6, transparent: true, opacity: 0.085, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
 
 const b = new Batch(9);
 function block(x: number, y: number, z: number, w: number, h: number, d: number, material: THREE.Material = concrete, _shadows = true) {
@@ -120,7 +120,7 @@ for (let i = 0; i < RIBS; i++) {
   for (let y = BOTTOM + 8; y < TOP - 8; y += 14, k++) b.boxRot(Math.sin(a) * (R - 1.6), y, -Math.cos(a) * (R - 1.6), 0.22, 6, 0.12, -a, pulseMats[k % 3]);
 }
 // Ring beams: a steel band every 30 m, deeper than the ribs so the shaft reads as stacked drums.
-for (let y = -120; y <= TOP - 30; y += 70) {
+for (let y = -120; y <= TOP - 30; y += 140) {
   b.arc(0, 0, R - 2.4, R, 0, TAU, y - 0.9, y + 0.9, metal, 2);
   b.arc(0, 0, R - 2.0, R, 0, TAU, y - 1.6, y - 0.9, darkConcrete, 2);
 }
@@ -166,11 +166,6 @@ for (let i = 0; i < 4; i++) {
   b.box(x, (36.8 + TOP) / 2, z, 0.35, TOP - 36.8, 0.35, darkMetal);         // suspension cable
 }
 
-// One steel bridge crossing the void beneath the halo, offset from the centre.
-const by = -8;
-b.box(-9, by, 0, 3.6, 0.6, R * 2 - 9, metal);
-b.box(-9, by - 1.6, 0, 1.2, 2.6, R * 2 - 9, darkMetal);
-for (const sd of [-1, 1]) b.rail(v3(-9 + sd * 1.65, by + 0.3, -R + 5), v3(-9 + sd * 1.65, by + 0.3, R - 5), metal, 1.0, 2.2);
 
 // ---------- the observer's landing ----------
 // A semicircular balcony cantilevered from the south wall, with a low steel-capped parapet.
@@ -186,8 +181,6 @@ b.flush(scene, [voidMat, glow]);
 // ---------- decay ----------
 {
   const d = new Decay(scene, { envMap });
-  d.puddle(-9, by + 0.3, -5, 1.2, 0.8, 37);
-  d.puddle(2.6, 0, 26.5, 1.5, 1.0, 38);
   d.flush();
 }
 
@@ -278,10 +271,10 @@ function updateLift(t: number) {
 }
 
 // ---------- light ----------
-const ambient = new THREE.HemisphereLight(0xd6dddd, 0x5a5e5e, 2.0);
+const ambient = new THREE.HemisphereLight(0xc4ccce, 0x2a2d2e, 1.35);   // low fill: the oculus is the light
 scene.add(ambient);
 // Sun enters only through the oculus: the roof casts shadows, so a bright patch lands on the walls.
-const sun = new THREE.DirectionalLight(0xf2f4f2, 3.2);
+const sun = new THREE.DirectionalLight(0xf2f4f2, 4.2);
 sun.position.set(-176, 1408, 308);
 sun.target.position.set(0, 0, 0);
 sun.castShadow = true;
@@ -291,7 +284,7 @@ sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
 sun.shadow.camera.near = 400; sun.shadow.camera.far = 2600;
 sun.shadow.bias = -0.0004;
 scene.add(sun, sun.target);
-const bounce = new THREE.DirectionalLight(0xb4bcbc, 0.8);
+const bounce = new THREE.DirectionalLight(0xb4bcbc, 0.35);
 bounce.position.set(30, -20, -40);
 scene.add(bounce);
 
@@ -302,6 +295,59 @@ const shaft = new THREE.Mesh(new THREE.CylinderGeometry(O - 0.5, O - 0.5, shaftL
 shaft.position.set(0, TOP, 0).addScaledVector(sunDir, -shaftLen / 2);
 shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), sunDir);
 scene.add(shaft);
+
+
+// ---------- atmosphere ----------
+// Long water stains down the shaft wall (curved decals), replacing the old repeating seepage marks.
+{
+  const c = document.createElement('canvas'); c.width = 256; c.height = 1024; const g = c.getContext('2d')!;
+  for (let i = 0; i < 26; i++) {
+    const x = Math.random() * 256, w = 6 + Math.random() * 40, len = 1024 * (0.4 + Math.random() * 0.6);
+    const gr = g.createLinearGradient(0, 0, 0, len);
+    gr.addColorStop(0, `rgba(28,30,30,${0.25 + Math.random() * 0.3})`); gr.addColorStop(0.6, `rgba(28,30,30,${0.12 + Math.random() * 0.15})`); gr.addColorStop(1, 'rgba(28,30,30,0)');
+    g.fillStyle = gr; g.fillRect(x, 0, w, len);
+  }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 1, side: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: -2 });
+  for (let i = 0; i < 22; i++) {
+    const th = Math.random() * TAU, span = 0.18 + Math.random() * 0.3, h = 60 + Math.random() * 160, top = -40 + Math.random() * (TOP - 20);
+    const geo = new THREE.CylinderGeometry(R - 0.05, R - 0.05, h, 24, 1, true, th, span);
+    const m = new THREE.Mesh(geo, mat); m.position.y = top - h / 2; m.renderOrder = 1; scene.add(m);
+  }
+}
+// Darkness layers: each veil below the landing swallows more light, so the shaft sinks into black.
+for (const [y, o] of [[-30, 0.18], [-70, 0.3], [-110, 0.42], [-150, 0.6], [-176, 0.9]] as const) {
+  const veil = new THREE.Mesh(new THREE.CircleGeometry(R - 0.2, 64), new THREE.MeshBasicMaterial({ color: 0x050607, transparent: true, opacity: o, depthWrite: false }));
+  veil.rotation.x = -Math.PI / 2; veil.position.y = y; scene.add(veil);
+}
+// A few faint lamps far below, the only sign anything is down there.
+for (let i = 0; i < 7; i++) {
+  const a = Math.random() * TAU, y = -120 - Math.random() * 55;
+  const lampM = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.3), new THREE.MeshBasicMaterial({ color: i % 3 ? 0xbfe9f5 : 0xffb36a }));
+  lampM.position.set(Math.sin(a) * (R - 0.5), y, -Math.cos(a) * (R - 0.5)); lampM.rotation.y = -a; scene.add(lampM);
+}
+// Dust drifting slowly inside the light beam.
+const dust = (() => {
+  const N = 800, pos = new Float32Array(N * 3), seed = new Float32Array(N);
+  for (let i = 0; i < N; i++) { seed[i] = Math.random(); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xe8eeee, size: 0.12, transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
+  scene.add(pts);
+  return { geo, pos, seed, N };
+})();
+function updateDust(t: number) {
+  const { pos, seed, N } = dust;
+  const dir = sun.position.clone().normalize();
+  for (let i = 0; i < N; i++) {
+    const s = seed[i];
+    const along = ((s * 997 + t * 0.6 * (0.3 + s)) % 160);           // distance down the beam from y = 60
+    const ang = s * 6283.1 + t * 0.05, rr = (O - 1) * Math.sqrt((s * 7919) % 1);
+    const base = new THREE.Vector3(Math.cos(ang) * rr, 0, Math.sin(ang) * rr);
+    const p = base.addScaledVector(dir, -along + 30);
+    pos[i * 3] = p.x + Math.sin(t * 0.3 + s * 40) * 0.6; pos[i * 3 + 1] = p.y + 30; pos[i * 3 + 2] = p.z;
+  }
+  dust.geo.attributes.position.needsUpdate = true;
+}
 
 // ---------- interaction ----------
 let dragging = false, lastX = 0, lastY = 0;
@@ -323,7 +369,7 @@ const lightInput = document.querySelector<HTMLInputElement>('#light')!;
 const fogValue = document.querySelector<HTMLOutputElement>('#fog-value')!;
 const lightValue = document.querySelector<HTMLOutputElement>('#light-value')!;
 fogInput.addEventListener('input', () => { const v = Number(fogInput.value); (scene.fog as THREE.FogExp2).density = v; fogValue.textContent = v.toFixed(3); });
-lightInput.addEventListener('input', () => { const v = Number(lightInput.value); ambient.intensity = 1.6 * v; bounce.intensity = v * 0.8; sun.intensity = 3.2 * v; lightValue.textContent = v.toFixed(1); });
+lightInput.addEventListener('input', () => { const v = Number(lightInput.value); ambient.intensity = 1.35 * v; bounce.intensity = v * 0.35; sun.intensity = 4.2 * v; lightValue.textContent = v.toFixed(1); });
 document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = '/classic-004.html'; });
 document.querySelector<HTMLButtonElement>('#prev')!.addEventListener('click', () => { window.location.href = '/classic-002.html'; });
 document.querySelector<HTMLButtonElement>('#first')!.addEventListener('click', () => { window.location.href = '/classic-001.html'; });
@@ -332,12 +378,12 @@ const show = document.querySelector<HTMLButtonElement>('#show')!;
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; });
 show.addEventListener('click', () => { panel.hidden = false; show.hidden = true; });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-const composer = aoComposer(renderer, scene, camera, 3, 0.9);
+const composer = aoComposer(renderer, scene, camera, 3, 0.9, { strength: 0.85, radius: 0.55, threshold: 0.82 });
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
-  updateWheel(dt, t); updateLift(t);
+  updateWheel(dt, t); updateLift(t); updateDust(t);
   pulseMats.forEach((m, i) => { m.emissiveIntensity = 0.25 + 1.6 * Math.max(0, Math.sin(t * 2.2 - i * 2.1)) ** 3; });
   composer.render();
 }

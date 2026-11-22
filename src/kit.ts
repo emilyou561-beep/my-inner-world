@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 // ---------------------------------------------------------------- textures
@@ -309,7 +310,7 @@ export class Batch {
 }
 
 // ---------------------------------------------------------------- post-processing
-export function aoComposer(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera, radius = 2.5, intensity = 0.9) {
+export function aoComposer(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera, radius = 2.5, intensity = 0.9, bloom?: { strength: number; radius: number; threshold: number }) {
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
@@ -317,6 +318,8 @@ export function aoComposer(renderer: THREE.WebGLRenderer, scene: THREE.Scene, ca
   gtao.blendIntensity = intensity;
   if (location.search.includes('noao')) gtao.enabled = false;
   composer.addPass(gtao);
+  // optional bloom: emissive lights get a soft halo and actually read as light sources
+  if (bloom) composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), bloom.strength, bloom.radius, bloom.threshold));
   composer.addPass(new OutputPass());
   addEventListener('resize', () => composer.setSize(innerWidth, innerHeight));
   return composer;
