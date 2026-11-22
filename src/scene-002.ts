@@ -433,7 +433,7 @@ for (const sx of [-1, 1]) box(sx * 5.1, 0.3, (gateZ + 8) / 2, 0.2, 0.4, 8 - gate
 // ---------------------------------------------------------------- banners
 // Four colossal cloth banners hang from the podium cornice, like the scorched hive-city banners and
 // the facade cloths of monumental-era buildings: faded oxblood, an invented clock emblem echoing the
-// stopped clock above, columns of unreadable glyphs, torn hems and holes. They sway slowly.
+// stopped clock above, columns of unreadable glyphs and torn hems. They sway slowly.
 function bannerTexture(seed: number): THREE.CanvasTexture {
   let a = seed; const rnd = () => { a = (a * 16807) % 2147483647; return a / 2147483647; };
   const W = 512, H = 1280, c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -466,13 +466,11 @@ function bannerTexture(seed: number): THREE.CanvasTexture {
   for (let i = 0; i < 60; i++) { const x = rnd() * W, l = 100 + rnd() * 700; const gr = g.createLinearGradient(0, 0, 0, l); gr.addColorStop(0, 'rgba(25,12,10,0.45)'); gr.addColorStop(1, 'rgba(25,12,10,0)'); g.fillStyle = gr; g.fillRect(x, 0, 2 + rnd() * 8, l); }
   const soot = g.createLinearGradient(0, H * 0.6, 0, H); soot.addColorStop(0, 'rgba(15,10,8,0)'); soot.addColorStop(1, 'rgba(15,10,8,0.7)');
   g.fillStyle = soot; g.fillRect(0, 0, W, H);
-  // torn hem and holes: cut away with alpha so the edges read as ragged cloth
+  // torn hem: cut away with alpha so the bottom edge reads as ragged cloth
   g.globalCompositeOperation = 'destination-out';
   g.beginPath(); g.moveTo(0, H);
   for (let x = 0; x <= W; x += 8) g.lineTo(x, H - 30 - rnd() * 170 - (rnd() < 0.08 ? 160 : 0));
   g.lineTo(W, H); g.closePath(); g.fill();
-  for (let i = 0; i < 7; i++) { const x = 60 + rnd() * (W - 120), y = 520 + rnd() * 600, r = 8 + rnd() * 30; g.beginPath(); g.ellipse(x, y, r, r * (1 + rnd()), rnd(), 0, Math.PI * 2); g.fill(); }
-  if (rnd() < 0.6) { g.beginPath(); const x = 80 + rnd() * 340; g.moveTo(x, H); g.lineTo(x + 18, H - 380 - rnd() * 200); g.lineTo(x + 40, H); g.fill(); }   // a long rip
   g.globalCompositeOperation = 'source-over';
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
 }
