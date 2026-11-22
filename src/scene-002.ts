@@ -364,7 +364,6 @@ const L1 = 42;
 // Grounding: a solid podium with deep dark bays, and wall-like pylons under each side cluster.
 box(0, L1 / 2, MZ + 2, 250, L1, 66, plainConcrete);
 for (const [x, w, l] of [[-112, 14, 30], [-70, 22, 36], [-20, 18, 26], [24, 26, 38], [70, 16, 30], [112, 20, 34]]) stain(x, L1, MZ + 35.06, w, l);
-for (const x of [-96, -48, 48, 96]) box(x, L1 * 0.42, MZ + 35.1, 16, L1 * 0.7, 0.4, voidMat);
 box(0, L1 + 1.5, MZ + 36, 252, 3, 4, darkConcrete);                  // heavy cornice over the podium
 box(-104, 64, -124, 36, 44, 30, darkConcrete);                       // left pylon, podium to cluster
 box(-110, 121, -150, 40, 16, 40, darkConcrete);
@@ -428,6 +427,80 @@ for (const sx of [-1, 1]) box(sx * 5.1, 0.3, (gateZ + 8) / 2, 0.2, 0.4, 8 - gate
   const g = new Decay(scene, { envMap });
   for (const [x, z] of [[-9, 13], [12, 6], [-20, -8], [24, -26], [6, -40], [-14, -55], [30, -50], [-36, -30], [-8, gateZ + 3], [10, gateZ + 2]]) g.weeds(x, 0, z, 1.6, x * 17 + z, 45, 1.4);
   g.flush();
+}
+
+
+// ---------------------------------------------------------------- banners
+// Four colossal cloth banners hang from the podium cornice, like the scorched hive-city banners and
+// the facade cloths of monumental-era buildings: faded oxblood, an invented clock emblem echoing the
+// stopped clock above, columns of unreadable glyphs, torn hems and holes. They sway slowly.
+function bannerTexture(seed: number): THREE.CanvasTexture {
+  let a = seed; const rnd = () => { a = (a * 16807) % 2147483647; return a / 2147483647; };
+  const W = 512, H = 1280, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d')!;
+  const base = g.createLinearGradient(0, 0, 0, H);
+  base.addColorStop(0, '#5e1d19'); base.addColorStop(0.5, '#6a2620'); base.addColorStop(1, '#4a1a16');
+  g.fillStyle = base; g.fillRect(0, 0, W, H);
+  // sun-bleached vertical bands and fold creases
+  for (let i = 0; i < 14; i++) { const x = rnd() * W, w = 10 + rnd() * 60; g.fillStyle = `rgba(190,140,120,${0.04 + rnd() * 0.08})`; g.fillRect(x, 0, w, H); }
+  for (let i = 0; i < 9; i++) { const x = (i + 1) * W / 10 + (rnd() - 0.5) * 20; g.fillStyle = 'rgba(20,6,5,0.18)'; g.fillRect(x, 0, 3, H); }
+  // border stripes
+  g.fillStyle = 'rgba(205,190,170,0.75)'; g.fillRect(22, 0, 8, H); g.fillRect(W - 30, 0, 8, H);
+  g.fillStyle = 'rgba(20,10,8,0.6)'; g.fillRect(40, 0, 3, H); g.fillRect(W - 43, 0, 3, H);
+  // emblem: a ring with twelve bars and a single hand, in worn off-white
+  const cx = W / 2, cy = 300, R = 150;
+  g.strokeStyle = 'rgba(214,200,178,0.9)'; g.lineWidth = 22; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+  g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, R - 36, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = 'rgba(214,200,178,0.9)';
+  for (let i = 0; i < 12; i++) { g.save(); g.translate(cx, cy); g.rotate(i * Math.PI / 6); g.fillRect(-7, -R + 22, 14, i % 3 ? 26 : 46); g.restore(); }
+  g.save(); g.translate(cx, cy); g.rotate(-0.55); g.fillRect(-9, -R + 50, 18, R - 40); g.restore();
+  g.beginPath(); g.arc(cx, cy, 20, 0, Math.PI * 2); g.fill();
+  // a horizontal bar and two columns of invented glyphs below
+  g.fillRect(70, 500, W - 140, 14);
+  for (const col of [150, 330]) for (let r = 0; r < 14; r++) {
+    const y = 560 + r * 46;
+    for (let k = 0; k < 3; k++) if (rnd() > 0.25) g.fillRect(col + (rnd() - 0.5) * 30, y + k * 11, 14 + rnd() * 26, 6);
+    if (rnd() > 0.5) g.fillRect(col + 6, y, 6, 34);
+  }
+  // grime: water runs from the top, mould and soot toward the hem
+  for (let i = 0; i < 60; i++) { const x = rnd() * W, l = 100 + rnd() * 700; const gr = g.createLinearGradient(0, 0, 0, l); gr.addColorStop(0, 'rgba(25,12,10,0.45)'); gr.addColorStop(1, 'rgba(25,12,10,0)'); g.fillStyle = gr; g.fillRect(x, 0, 2 + rnd() * 8, l); }
+  const soot = g.createLinearGradient(0, H * 0.6, 0, H); soot.addColorStop(0, 'rgba(15,10,8,0)'); soot.addColorStop(1, 'rgba(15,10,8,0.7)');
+  g.fillStyle = soot; g.fillRect(0, 0, W, H);
+  // torn hem and holes: cut away with alpha so the edges read as ragged cloth
+  g.globalCompositeOperation = 'destination-out';
+  g.beginPath(); g.moveTo(0, H);
+  for (let x = 0; x <= W; x += 8) g.lineTo(x, H - 30 - rnd() * 170 - (rnd() < 0.08 ? 160 : 0));
+  g.lineTo(W, H); g.closePath(); g.fill();
+  for (let i = 0; i < 7; i++) { const x = 60 + rnd() * (W - 120), y = 520 + rnd() * 600, r = 8 + rnd() * 30; g.beginPath(); g.ellipse(x, y, r, r * (1 + rnd()), rnd(), 0, Math.PI * 2); g.fill(); }
+  if (rnd() < 0.6) { g.beginPath(); const x = 80 + rnd() * 340; g.moveTo(x, H); g.lineTo(x + 18, H - 380 - rnd() * 200); g.lineTo(x + 40, H); g.fill(); }   // a long rip
+  g.globalCompositeOperation = 'source-over';
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+const banners: { geo: THREE.PlaneGeometry; base: Float32Array; phase: number }[] = [];
+{
+  const BW = 32, BH = 84, top = L1 * K - 2, z = MZ + 35 * K + BACK + 1.6;
+  for (const [i, x] of [-230, -115, 115, 230].entries()) {
+    const geo = new THREE.PlaneGeometry(BW, BH, 14, 36); geo.translate(x, top - BH / 2, z);
+    const mat = new THREE.MeshStandardMaterial({ map: bannerTexture(7 + i * 131), side: THREE.DoubleSide, alphaTest: 0.5, roughness: 1 });
+    const mesh = new THREE.Mesh(geo, mat); mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh);
+    banners.push({ geo, base: Float32Array.from(geo.attributes.position.array as Float32Array), phase: i * 1.7 });
+    // rusted hanging bar and its brackets
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, BW + 4, 12), rustHeavy); bar.rotation.z = Math.PI / 2; bar.position.set(x, top + 0.4, z); scene.add(bar);
+    for (const sx of [-1, 1]) { const br = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3, 3.4), rustHeavy); br.position.set(x + sx * (BW / 2 + 1), top + 1.2, z - 1.2); scene.add(br); }
+  }
+}
+function updateBanners(t: number) {
+  for (const bn of banners) {
+    const pos = bn.geo.attributes.position as THREE.BufferAttribute, b0 = bn.base;
+    for (let i = 0; i < pos.count; i++) {
+      const x = b0[i * 3], y = b0[i * 3 + 1], z = b0[i * 3 + 2];
+      const hang = (L1 * K - 2 - y) / 84;                    // 0 at the bar, 1 at the hem
+      const w = hang ** 1.4;
+      pos.setZ(i, z + w * (2.2 * Math.sin(t * 0.55 + bn.phase + y * 0.05) + 0.7 * Math.sin(t * 1.3 + x * 0.15 + bn.phase)));
+      pos.setX(i, x + w * 0.8 * Math.sin(t * 0.4 + bn.phase * 2));
+    }
+    pos.needsUpdate = true; bn.geo.computeVertexNormals();
+  }
 }
 
 // Far monoliths, almost dissolved in the fog: the city-scale depth behind.
@@ -509,6 +582,7 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
   updateClock(dt, clock.elapsedTime);
+  updateBanners(clock.elapsedTime);
   composer.render();
 }
 animate();

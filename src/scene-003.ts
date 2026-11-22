@@ -78,9 +78,14 @@ function block(x: number, y: number, z: number, w: number, h: number, d: number,
 // materials get a soft studio environment map; the concrete stays purely diffuse.
 const pmrem = new THREE.PMREMGenerator(renderer);
 const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-// All steel here has been left to rust: mill scale eaten through by orange-brown blooms and runs.
-const metal = rustMaterial({ amount: 0.55, seed: 21, envMap, repeat: 1.5, tint: 0xa49a92 });
-const darkMetal = rustMaterial({ amount: 0.85, seed: 23, envMap, repeat: 1.5, tint: 0x8e8278 });
+// Gunmetal steel with only light, patchy rust; the machines keep their heavier corrosion.
+const metal = rustMaterial({ amount: 0.12, seed: 21, envMap, repeat: 1.5, tint: 0x9aa0a2 });
+const darkMetal = rustMaterial({ amount: 0.18, seed: 23, envMap, repeat: 1.5, tint: 0x6e7476 });
+metal.metalness = darkMetal.metalness = 0.8; metal.envMapIntensity = darkMetal.envMapIntensity = 0.6;
+const machineRust = rustMaterial({ amount: 0.6, seed: 25, envMap, repeat: 1.5, tint: 0xa09086 });
+const machineRustDark = rustMaterial({ amount: 0.8, seed: 27, envMap, repeat: 1.5, tint: 0x8a7c72 });
+// Light strips: segments on every rib, in three groups pulsed in sequence so light climbs the shaft.
+const pulseMats = [0, 1, 2].map(() => new THREE.MeshStandardMaterial({ color: 0x0a0d0e, emissive: 0xbfe9f5, emissiveIntensity: 1, roughness: 1 }));
 const glow = new THREE.MeshStandardMaterial({ color: 0x0c0f10, emissive: 0xdff2f7, emissiveIntensity: 2.4, roughness: 1 });
 
 // ---------- the shaft ----------
@@ -111,6 +116,8 @@ for (let i = 0; i < RIBS; i++) {
   if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.4) continue; // clear the landing
   b.boxRot(Math.sin(a) * (R - 0.6), (BOTTOM + TOP) / 2, -Math.cos(a) * (R - 0.6), 2.6, TOP - BOTTOM, 1.2, -a, darkMetal);
   b.boxRot(Math.sin(a) * (R - 1.35), (BOTTOM + TOP) / 2, -Math.cos(a) * (R - 1.35), 0.9, TOP - BOTTOM, 0.4, -a, darkMetal);
+  let k = 0;
+  for (let y = BOTTOM + 8; y < TOP - 8; y += 14, k++) b.boxRot(Math.sin(a) * (R - 1.6), y, -Math.cos(a) * (R - 1.6), 0.22, 6, 0.12, -a, pulseMats[k % 3]);
 }
 // Ring beams: a steel band every 30 m, deeper than the ribs so the shaft reads as stacked drums.
 for (let y = -120; y <= TOP - 30; y += 70) {
@@ -193,17 +200,17 @@ const wheel = new THREE.Group();
   const WY = 24, WR = 13, WZ = -(R - 5.5);
   const mount = new THREE.Group(); mount.position.set(0, WY, WZ); scene.add(mount);
   const add = (g: THREE.BufferGeometry, m: THREE.Material, parent: THREE.Object3D) => { const me = new THREE.Mesh(g, m); me.castShadow = me.receiveShadow = true; parent.add(me); };
-  add(new THREE.TorusGeometry(WR, 0.9, 14, 120), darkMetal, wheel);
-  add(new THREE.TorusGeometry(WR - 3.5, 0.45, 10, 96), metal, wheel);
-  const hub = new THREE.CylinderGeometry(2.4, 2.4, 2.6, 40); hub.rotateX(Math.PI / 2); add(hub, darkMetal, wheel);
-  const cap = new THREE.CylinderGeometry(1.1, 1.1, 3.4, 24); cap.rotateX(Math.PI / 2); add(cap, metal, wheel);
-  for (let i = 0; i < 8; i++) { const g = new THREE.BoxGeometry(0.9, WR - 2.4, 0.7); g.translate(0, (WR + 2.4) / 2, 0); g.rotateZ((i / 8) * Math.PI * 2); add(g, metal, wheel); }
-  for (let i = 0; i < 36; i++) { const g = new THREE.BoxGeometry(1.1, 1.6, 1.4); g.translate(0, WR + 1.4, 0); g.rotateZ((i / 36) * Math.PI * 2); add(g, darkMetal, wheel); }
+  add(new THREE.TorusGeometry(WR, 0.9, 14, 120), machineRustDark, wheel);
+  add(new THREE.TorusGeometry(WR - 3.5, 0.45, 10, 96), machineRust, wheel);
+  const hub = new THREE.CylinderGeometry(2.4, 2.4, 2.6, 40); hub.rotateX(Math.PI / 2); add(hub, machineRustDark, wheel);
+  const cap = new THREE.CylinderGeometry(1.1, 1.1, 3.4, 24); cap.rotateX(Math.PI / 2); add(cap, machineRust, wheel);
+  for (let i = 0; i < 8; i++) { const g = new THREE.BoxGeometry(0.9, WR - 2.4, 0.7); g.translate(0, (WR + 2.4) / 2, 0); g.rotateZ((i / 8) * Math.PI * 2); add(g, machineRust, wheel); }
+  for (let i = 0; i < 36; i++) { const g = new THREE.BoxGeometry(1.1, 1.6, 1.4); g.translate(0, WR + 1.4, 0); g.rotateZ((i / 36) * Math.PI * 2); add(g, machineRustDark, wheel); }
   mount.add(wheel);
   // axle housing into the wall and the pawl that jams it, both fixed
   const axle = new THREE.BoxGeometry(4, 4, 5.5); axle.translate(0, 0, -3); add(axle, darkConcrete, mount);
-  const pawlArm = new THREE.BoxGeometry(1.2, 5, 1.2); pawlArm.translate(0, 0, 0); pawlArm.rotateZ(0.5); pawlArm.translate(-2.2, WR + 3.6, 0.2); add(pawlArm, metal, mount);
-  const pawlPin = new THREE.CylinderGeometry(0.9, 0.9, 2.4, 16); pawlPin.rotateX(Math.PI / 2); pawlPin.translate(-3.4, WR + 5.6, -0.3); add(pawlPin, darkMetal, mount);
+  const pawlArm = new THREE.BoxGeometry(1.2, 5, 1.2); pawlArm.translate(0, 0, 0); pawlArm.rotateZ(0.5); pawlArm.translate(-2.2, WR + 3.6, 0.2); add(pawlArm, machineRust, mount);
+  const pawlPin = new THREE.CylinderGeometry(0.9, 0.9, 2.4, 16); pawlPin.rotateX(Math.PI / 2); pawlPin.translate(-3.4, WR + 5.6, -0.3); add(pawlPin, machineRustDark, mount);
   const bracket = new THREE.BoxGeometry(3, 3, 6); bracket.translate(-3.4, WR + 5.6, -3); add(bracket, darkConcrete, mount);
 }
 const wheelState = { a: 0, v: 0, base: 0, target: 0, next: 1.5, hold: 0, burst: 0 };
@@ -234,33 +241,33 @@ let cable: THREE.Mesh;
 {
   const add = (g: THREE.BufferGeometry, m: THREE.Material, parent: THREE.Object3D) => { const me = new THREE.Mesh(g, m); me.castShadow = me.receiveShadow = true; parent.add(me); return me; };
   // rails and the brackets tying them back to the wall (skipping where the spiral ramp passes)
-  for (const x of [-2.4, 2.4]) { const g = new THREE.BoxGeometry(0.45, TOP - BOTTOM, 0.6); g.translate(x, (TOP + BOTTOM) / 2, -1.9); add(g, darkMetal, liftBase); }
+  for (const x of [-2.4, 2.4]) { const g = new THREE.BoxGeometry(0.45, TOP - BOTTOM, 0.6); g.translate(x, (TOP + BOTTOM) / 2, -1.9); add(g, machineRustDark, liftBase); }
   for (let y = BOTTOM + 10; y < TOP - 6; y += 18) {
     if (Math.abs(((y + 114.5) % 52 + 52) % 52) < 5 || Math.abs(((y + 114.5) % 52 + 52) % 52) > 47) continue;
-    const g = new THREE.BoxGeometry(5.4, 0.6, R - LIFT_R + 0.5); g.translate(0, y, -1.9 - (R - LIFT_R) / 2); add(g, darkMetal, liftBase);
+    const g = new THREE.BoxGeometry(5.4, 0.6, R - LIFT_R + 0.5); g.translate(0, y, -1.9 - (R - LIFT_R) / 2); add(g, machineRustDark, liftBase);
   }
   // the cage: floor, roof, corner posts, bars, a gate, a weak warm lamp
   const W = 4, H = 3.2, D = 3.4;
-  const floor = new THREE.BoxGeometry(W, 0.3, D); add(floor, darkMetal, cage);
-  const roof = new THREE.BoxGeometry(W, 0.25, D); roof.translate(0, H, 0); add(roof, darkMetal, cage);
-  for (const x of [-W / 2, W / 2]) for (const z of [-D / 2, D / 2]) { const g = new THREE.BoxGeometry(0.18, H, 0.18); g.translate(x, H / 2, z); add(g, metal, cage); }
+  const floor = new THREE.BoxGeometry(W, 0.3, D); add(floor, machineRustDark, cage);
+  const roof = new THREE.BoxGeometry(W, 0.25, D); roof.translate(0, H, 0); add(roof, machineRustDark, cage);
+  for (const x of [-W / 2, W / 2]) for (const z of [-D / 2, D / 2]) { const g = new THREE.BoxGeometry(0.18, H, 0.18); g.translate(x, H / 2, z); add(g, machineRust, cage); }
   for (let i = 1; i < 12; i++) {
     const u = -W / 2 + (i * W) / 12;
-    for (const z of [-D / 2, D / 2]) { const g = new THREE.BoxGeometry(0.05, H, 0.05); g.translate(u, H / 2, z); add(g, metal, cage); }
+    for (const z of [-D / 2, D / 2]) { const g = new THREE.BoxGeometry(0.05, H, 0.05); g.translate(u, H / 2, z); add(g, machineRust, cage); }
   }
   for (let i = 1; i < 10; i++) {
     const u = -D / 2 + (i * D) / 10;
-    for (const x of [-W / 2, W / 2]) { const g = new THREE.BoxGeometry(0.05, H, 0.05); g.translate(x, H / 2, u); add(g, metal, cage); }
+    for (const x of [-W / 2, W / 2]) { const g = new THREE.BoxGeometry(0.05, H, 0.05); g.translate(x, H / 2, u); add(g, machineRust, cage); }
   }
-  for (const y of [1.1, 2.2]) for (const z of [-D / 2, D / 2]) { const g = new THREE.BoxGeometry(W, 0.08, 0.08); g.translate(0, y, z); add(g, metal, cage); }
+  for (const y of [1.1, 2.2]) for (const z of [-D / 2, D / 2]) { const g = new THREE.BoxGeometry(W, 0.08, 0.08); g.translate(0, y, z); add(g, machineRust, cage); }
   // guide shoes on the rails
-  for (const x of [-2.4, 2.4]) for (const y of [0.4, H - 0.4]) { const g = new THREE.BoxGeometry(0.8, 0.6, 1.2); g.translate(x, y, -1.4); add(g, darkMetal, cage); }
+  for (const x of [-2.4, 2.4]) for (const y of [0.4, H - 0.4]) { const g = new THREE.BoxGeometry(0.8, 0.6, 1.2); g.translate(x, y, -1.4); add(g, machineRustDark, cage); }
   const lampMat = new THREE.MeshStandardMaterial({ color: 0x1a1410, emissive: 0xffc98a, emissiveIntensity: 2.2 });
   const lamp = new THREE.BoxGeometry(0.6, 0.12, 0.3); lamp.translate(0, H - 0.2, 0); add(lamp, lampMat, cage);
   const bulb = new THREE.PointLight(0xffc28a, 60, 18, 2); bulb.position.set(0, H - 0.5, 0); cage.add(bulb);
   // hoist cable up to the roof; its length is updated as the cage moves
   const cg = new THREE.BoxGeometry(0.12, 1, 0.12); cg.translate(0, 0.5, 0);
-  cable = add(cg, darkMetal, liftBase);
+  cable = add(cg, machineRustDark, liftBase);
 }
 const LIFT_LOW = BOTTOM + 15, LIFT_HIGH = TOP - 8, LIFT_SPEED = 0.45;
 function updateLift(t: number) {
@@ -331,6 +338,7 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   updateWheel(dt, t); updateLift(t);
+  pulseMats.forEach((m, i) => { m.emissiveIntensity = 0.25 + 1.6 * Math.max(0, Math.sin(t * 2.2 - i * 2.1)) ** 3; });
   composer.render();
 }
 animate();

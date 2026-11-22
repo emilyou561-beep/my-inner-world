@@ -316,5 +316,105 @@ const show = document.querySelector<HTMLButtonElement>('#show')!;
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; });
 show.addEventListener('click', () => { panel.hidden = false; show.hidden = true; });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-function animate() { requestAnimationFrame(animate); composer.render(); }
+
+// ---------------------------------------------------------------- moving: the sky-bridge shuttle
+// A single lit car hangs beneath the curved deck 150 m up (a suspended monorail) and crawls from one tower to the other, waits at the
+// platform, then comes back. A guide line glows under the deck.
+const shuttle = new THREE.Group(); shuttle.scale.setScalar(1.5); scene.add(shuttle);
+{
+  const body = new THREE.MeshStandardMaterial({ color: 0x2a2f33, metalness: 0.85, roughness: 0.35 });
+  const winMat = new THREE.MeshStandardMaterial({ color: 0x0b0f12, emissive: 0xcfeefa, emissiveIntensity: 2.4, roughness: 0.3 });
+  const tail = new THREE.MeshStandardMaterial({ color: 0x100606, emissive: 0xff3a2a, emissiveIntensity: 3 });
+  const add = (g: THREE.BufferGeometry, m: THREE.Material) => { const me = new THREE.Mesh(g, m); me.castShadow = true; shuttle.add(me); return me; };
+  // local x runs along the track
+  add(new THREE.BoxGeometry(11, 3, 3.2), body).position.y = 1.9;
+  const nose = new THREE.CylinderGeometry(1.6, 1.6, 3.2, 20, 1, false, 0, Math.PI); nose.rotateX(Math.PI / 2);
+  add(nose.clone(), body).position.set(5.5, 1.9, 0);
+  const n2 = add(nose.clone(), body); n2.position.set(-5.5, 1.9, 0); n2.rotation.y = Math.PI;
+  for (const z of [-1.62, 1.62]) add(new THREE.BoxGeometry(9.6, 0.7, 0.05), winMat).position.set(0, 2.4, z);
+  for (const x of [-6.9, 6.9]) add(new THREE.BoxGeometry(0.1, 0.4, 1.6), tail).position.set(x, 1.4, 0);
+  add(new THREE.BoxGeometry(10, 0.5, 2.2), body).position.y = 0.25;                    // bogie skirt
+  const beacon = new THREE.PointLight(0xcfeefa, 400, 40, 2); beacon.position.set(0, -0.5, 0); shuttle.add(beacon);
+  for (const x of [-3.5, 3.5]) add(new THREE.BoxGeometry(0.6, 2.2, 0.6), body).position.set(x, 4.4, 0);   // hangers up to the rail
+  add(new THREE.BoxGeometry(0.6, 0.3, 1.2), tail).position.set(0, 0.0, 0);                                  // belly light
+  // glowing guide line under the deck along its whole length
+  const guide = new THREE.MeshStandardMaterial({ color: 0x0a0d0e, emissive: 0x9fd8ea, emissiveIntensity: 1.6 });
+  const g = new THREE.TorusGeometry(80, 0.18, 6, 200, 2.96); g.rotateX(Math.PI / 2); g.rotateY(Math.PI / 2 + 1.48);
+  const gm = new THREE.Mesh(g, guide); gm.position.y = 150 - 3.7; scene.add(gm);
+}
+const SH = { a0: -1.38, a1: 1.38, travel: 80, dwell: 10 };
+function updateShuttle(t: number) {
+  const cycle = 2 * (SH.travel + SH.dwell), p = t % cycle;
+  let u: number;
+  if (p < SH.travel) u = p / SH.travel;
+  else if (p < SH.travel + SH.dwell) u = 1;
+  else if (p < 2 * SH.travel + SH.dwell) u = 1 - (p - SH.travel - SH.dwell) / SH.travel;
+  else u = 0;
+  const e = u * u * (3 - 2 * u);                                          // ease in and out of the platforms
+  const a = SH.a0 + (SH.a1 - SH.a0) * e;
+  shuttle.position.set(Math.sin(a) * 80, 150 - 3.7 - 5.5 * 1.5, -Math.cos(a) * 80);
+  shuttle.rotation.y = -a;
+}
+
+// ---------------------------------------------------------------- moving: the data wall
+// Behind the colonnade the back wall is a field of small indicator lamps, like an old machine
+// room: they blink on their own rhythms, and every so often a blackout sweeps along the wall and
+// the lamps relight from one end.
+const DW = { r: 86.85, cell: 1.1, y0: 0.9 * 14 + 1.4, rows: 12 };
+const dwCols = Math.floor(((S1 - S0 - 0.04) * DW.r) / DW.cell);
+const lampMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.62, 0.62), new THREE.MeshBasicMaterial({ color: 0xffffff }), dwCols * DW.rows);
+const lampSeed = new Float32Array(dwCols * DW.rows), lampKind = new Uint8Array(dwCols * DW.rows);
+{
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+  let i = 0;
+  for (let c = 0; c < dwCols; c++) {
+    const a = S0 + 0.02 + (c + 0.5) * DW.cell / DW.r;
+    e.set(0, -a, 0); q.setFromEuler(e);
+    for (let r = 0; r < DW.rows; r++, i++) {
+      m.compose(new THREE.Vector3(Math.sin(a) * DW.r, DW.y0 + r * DW.cell, -Math.cos(a) * DW.r), q, new THREE.Vector3(1, 1, 1));
+      lampMesh.setMatrixAt(i, m);
+      lampSeed[i] = Math.random(); const k = Math.random(); lampKind[i] = k < 0.05 ? 1 : k < 0.06 ? 2 : 0;   // 0 cold, 1 amber, 2 red
+      lampMesh.setColorAt(i, new THREE.Color(0, 0, 0));
+    }
+  }
+  scene.add(lampMesh);
+  // dark backing panel for the lamp field
+  const panel = new THREE.MeshStandardMaterial({ color: 0x15191b, roughness: 0.6, metalness: 0.4 });
+  const pg = new THREE.CylinderGeometry(DW.r + 0.1, DW.r + 0.1, DW.rows * DW.cell + 0.8, 160, 1, true, S0 + Math.PI + 0.01, S1 - S0 - 0.02);
+  const pm = new THREE.Mesh(pg, panel); pm.material.side = THREE.BackSide; pm.position.y = DW.y0 + (DW.rows - 1) * DW.cell / 2; scene.add(pm);
+}
+const lampCol = new THREE.Color();
+let lampClock = 0;
+function updateDataWall(t: number) {
+  if (t - lampClock < 0.07) return; lampClock = t;
+  const P = 26, p = t % P;                       // every 26 s: blackout sweep, dark pause, relight sweep
+  for (let c = 0, i = 0; c < dwCols; c++) {
+    const f = c / dwCols;
+    let gate = 1;
+    if (p < 3) gate = f < p / 3 ? 0 : 1;
+    else if (p < 4.5) gate = 0;
+    else if (p < 7.5) gate = f < (p - 4.5) / 3 ? 1 : 0;
+    for (let r = 0; r < DW.rows; r++, i++) {
+      const sd = lampSeed[i];
+      const rate = 0.3 + sd * 3;
+      const h = Math.sin((Math.floor(t * rate) + sd * 97.3) * 12.9898) * 43758.5453;
+      const on = (h - Math.floor(h)) > 0.42 ? 1 : 0;
+      const v = on * gate;
+      const k = lampKind[i];
+      if (k === 1) lampCol.setRGB(2.4 * v + 0.03, 1.3 * v + 0.02, 0.3 * v + 0.01);
+      else if (k === 2) lampCol.setRGB(2.6 * v + 0.03, 0.25 * v + 0.01, 0.2 * v + 0.01);
+      else lampCol.setRGB(1.0 * v + 0.02, 1.9 * v + 0.03, 2.2 * v + 0.03);
+      lampMesh.setColorAt(i, lampCol);
+    }
+  }
+  lampMesh.instanceColor!.needsUpdate = true;
+}
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  updateShuttle(t); updateDataWall(t);
+  composer.render();
+}
 animate();
