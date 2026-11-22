@@ -16,7 +16,7 @@ app.innerHTML = `
   <div id="scene" aria-label="Monumental brutalist exterior"></div>
   <header><div class="eyebrow">CONCRETE WORLD / 002</div><h1>THE MONUMENTAL EXTERIOR</h1></header>
   <aside aria-label="Scene controls"><div class="panel-title">ATMOSPHERE</div>
-    <label for="fog">FOG <output id="fog-value">0.003</output><input id="fog" type="range" min="0.002" max="0.02" step="0.0002" value="0.003"></label>
+    <label for="fog">FOG <output id="fog-value">0.0012</output><input id="fog" type="range" min="0.0004" max="0.02" step="0.0002" value="0.0012"></label>
     <label for="light">LIGHT <output id="light-value">1.0</output><input id="light" type="range" min="0.3" max="2" step="0.1" value="1.0"></label>
     <a class="panel-link" href="/classic-003.html">NEXT SCENE</a><a class="panel-link" href="/classic-001.html">SCENE 001</a><button id="hide" type="button">HIDE UI</button>
   </aside><button id="show" type="button" hidden>SHOW UI</button>`;
@@ -26,13 +26,13 @@ app.innerHTML = `
 const SKY = new THREE.Color(0xc4cdcb);
 const scene = new THREE.Scene();
 scene.background = SKY;
-scene.fog = new THREE.FogExp2(SKY, 0.003);
+scene.fog = new THREE.FogExp2(SKY, 0.0012);
 
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.3, 1200);
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.3, 5000);
 camera.position.set(0, 5.5, 22);
 camera.rotation.order = 'YXZ';
 let yaw = 0;
-let pitch = 0.38;
+let pitch = 0.5;
 camera.rotation.set(pitch, yaw, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -72,7 +72,10 @@ const voidMat = new THREE.MeshStandardMaterial({ color: 0x0f1213, roughness: 1 }
 // Thousands of small parts (mullions, rails, sills) are merged into one mesh per material.
 const batches = new Map<THREE.Material, THREE.BufferGeometry[]>();
 const TILE = 9;
+// While BIG is set, everything pushed is scaled up about the structure's centre line (see below).
+let BIG: THREE.Matrix4 | null = null;
 function push(geo: THREE.BufferGeometry, mat: THREE.Material) {
+  if (BIG) geo.applyMatrix4(BIG);
   if (geo.index) geo = geo.toNonIndexed();   // mixed indexed/non-indexed parts would fail to merge
   if (!batches.has(mat)) batches.set(mat, []);
   batches.get(mat)!.push(geo);
@@ -168,10 +171,10 @@ function volume(cx: number, y0: number, cz: number, w: number, h: number, d: num
 }
 
 // ---------------------------------------------------------------- site: plateau on a cliff
-box(0, -0.6, -110, 300, 1.2, 280, groundMat);                       // plateau, ends at z = 30
-box(0, -21, 31, 260, 42, 6, darkConcrete);                          // cliff face (overlaps plateau edge: no seam)
+box(0, -0.6, -720, 1800, 1.2, 1500, groundMat);                     // plateau, ends at z = 30
+box(0, -21, 31, 1800, 42, 6, darkConcrete);                          // cliff face (overlaps plateau edge: no seam)
 box(0, -42.5, 150, 600, 1, 240, groundMat);                         // barren plain far below
-box(0, 0.55, 29.4, 260, 1.1, 0.4, darkConcrete);                    // low edge wall behind the observer
+box(0, 0.55, 29.4, 1800, 1.1, 0.4, darkConcrete);                    // low edge wall behind the observer
 railing('front', 0, 29.4, 0, 0, 1.1, 80);
 
 // ---------------------------------------------------------------- megastructure
@@ -185,7 +188,7 @@ const glow = new THREE.MeshStandardMaterial({ color: 0x0c0f10, emissive: 0xe4f3f
 // Rusted iron for the clock and the window frames; dark glass behind them.
 const rustIron = rustMaterial({ amount: 0.8, seed: 3, envMap, repeat: 2, tint: 0xd4b4a0 });
 const rustHeavy = rustMaterial({ amount: 1, seed: 5, envMap, repeat: 2, tint: 0xc8a48c });
-const darkGlass = new THREE.MeshStandardMaterial({ color: 0x0b0e0f, roughness: 0.12, metalness: 0.7, envMap, envMapIntensity: 0.45 });
+const darkGlass = new THREE.MeshStandardMaterial({ color: 0x0b0e0f, roughness: 0.2, metalness: 0.6, envMap, envMapIntensity: 0.15 });
 const streaks = streakMaterial();
 // A rust/water run decal hanging down a +z-facing concrete face from (x, yTop).
 function stain(x: number, yTop: number, z: number, w: number, len: number) {
@@ -195,6 +198,12 @@ function stain(x: number, yTop: number, z: number, w: number, len: number) {
 // A tall, interlocking stack of hollow concrete boxes cantilevering in every direction, carried on
 // leaning slab legs. At its heart a massive square block holds the stopped clock.
 const MZ = -150, MD = 28, AY = 122, AR = 34, CW = 100;
+// The structure and clock are designed in the units below, then built 2.4x larger: about 1.2 km
+// tall and 700 m wide, its upper tiers leaning out over the observer's head.
+const K = 2.4;
+const BACK = -100;   // pushed back so it rises up out of the view instead of walling it off
+BIG = new THREE.Matrix4().makeTranslation(0, 0, MZ + BACK).multiply(new THREE.Matrix4().makeScale(K, K, K)).multiply(new THREE.Matrix4().makeTranslation(0, 0, -MZ));
+const clockRoot = new THREE.Group(); clockRoot.position.set(0, 0, MZ * (1 - K) + BACK); clockRoot.scale.setScalar(K); scene.add(clockRoot);
 // Clock block: a solid square slab pierced by the round clock aperture.
 {
   const shape = new THREE.Shape();
@@ -264,13 +273,13 @@ function clockFace(): THREE.CanvasTexture {
 const CLOCK_Z = front - 6;
 const clockMat = new THREE.MeshStandardMaterial({ map: clockFace(), roughness: 0.85 });
 const face = new THREE.Mesh(new THREE.CircleGeometry(AR - 0.25, 160), clockMat);
-face.position.set(0, AY, CLOCK_Z); face.receiveShadow = true; scene.add(face);
+face.position.set(0, AY, CLOCK_Z); face.receiveShadow = true; clockRoot.add(face);
 function hand(len: number, tail: number, width: number, depth: number, mat: THREE.Material, z: number) {
   const pivot = new THREE.Group(); pivot.position.set(0, AY, z);
   const shape = new THREE.Shape();
   shape.moveTo(-width / 2, -tail); shape.lineTo(width / 2, -tail); shape.lineTo(width * 0.32, len * 0.92); shape.lineTo(0, len); shape.lineTo(-width * 0.32, len * 0.92); shape.lineTo(-width / 2, -tail);
   const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
-  const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; pivot.add(m); scene.add(pivot);
+  const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; pivot.add(m); clockRoot.add(pivot);
   return pivot;
 }
 const handMat = rustMaterial({ amount: 0.5, seed: 9, envMap, tint: 0x8a8a8a, repeat: 0.3 });
@@ -280,7 +289,7 @@ const minuteHand = hand(AR * 0.86, 6, 1.7, 0.5, handMat, CLOCK_Z + 0.7);
 const secondHand = hand(AR * 0.8, 5, 0.35, 0.2, rustMat, CLOCK_Z + 1.25);
 {
   const hub = new THREE.CylinderGeometry(2.4, 2.6, 2.2, 48); hub.rotateX(Math.PI / 2); hub.translate(0, AY, CLOCK_Z + 0.9);
-  const m = new THREE.Mesh(hub, rustHeavy); m.castShadow = true; scene.add(m);
+  const m = new THREE.Mesh(hub, rustHeavy); m.castShadow = true; clockRoot.add(m);
 }
 const HOUR = 4 + 47 / 60, MIN = 47;            // stopped at 4:47
 hourHand.rotation.z = -(HOUR / 12) * Math.PI * 2;
@@ -310,7 +319,7 @@ function updateClock(dt: number, t: number) {
 }
 
 // ---------------------------------------------------------------- the stack
-const decay = new Decay(scene, { envMap });
+const decay = new Decay(clockRoot as unknown as THREE.Scene, { envMap });   // grass on the structure, scaled with it
 // A hollow box: four thick slabs, open at both ends along `open`. `back` adds a recessed inner wall.
 let frameNo = 0;
 function frame(cx: number, cy: number, cz: number, w: number, h: number, d: number, t: number, open: 'x' | 'z', back = false, fill = true) {
@@ -352,6 +361,16 @@ function glaze(cx: number, cy: number, cz: number, w: number, h: number, d: numb
   }
 }
 const L1 = 42;
+// Grounding: a solid podium with deep dark bays, and wall-like pylons under each side cluster.
+box(0, L1 / 2, MZ + 2, 250, L1, 66, plainConcrete);
+for (const [x, w, l] of [[-112, 14, 30], [-70, 22, 36], [-20, 18, 26], [24, 26, 38], [70, 16, 30], [112, 20, 34]]) stain(x, L1, MZ + 35.06, w, l);
+for (const x of [-96, -48, 48, 96]) box(x, L1 * 0.42, MZ + 35.1, 16, L1 * 0.7, 0.4, voidMat);
+box(0, L1 + 1.5, MZ + 36, 252, 3, 4, darkConcrete);                  // heavy cornice over the podium
+box(-104, 64, -124, 36, 44, 30, darkConcrete);                       // left pylon, podium to cluster
+box(-110, 121, -150, 40, 16, 40, darkConcrete);
+box(132, 28.5, -150, 30, 57, 36, darkConcrete);                      // right pylon, ground to cluster
+box(80, 63, -110, 24, 42, 20, darkConcrete);
+box(110, 140, -130, 30, 18, 30, darkConcrete);
 // First tier: two wide boxes, one open to the front, one turned sideways.
 frame(-42, L1 + 15, MZ + 6, 128, 30, 62, 4, 'z', true);
 frame(62, L1 + 20, MZ - 4, 96, 40, 72, 4, 'x');
@@ -368,38 +387,53 @@ frame(116, 160, -118, 52, 24, 72, 4, 'x');
 frame(80, 96, -110, 44, 24, 36, 3.5, 'x');
 frame(132, 72, -150, 40, 30, 44, 4, 'z');
 // The upper tower: boxes turning and stepping as they climb into the fog.
+// Each tier steps forward of the one below, so the top of the stack hangs out over the observer.
 const upper: [number, number, number, number, number, number, 'x' | 'z', boolean][] = [
-  [-10, 196, -150, 132, 36, 72, 'x', true], [28, 234, -138, 92, 40, 62, 'z', true], [-36, 268, -162, 104, 30, 58, 'x', false],
-  [12, 302, -148, 72, 38, 72, 'z', true], [44, 336, -166, 84, 30, 52, 'x', false], [-22, 368, -150, 62, 34, 62, 'z', true],
-  [18, 400, -160, 70, 30, 46, 'x', false],
+  [-10, 196, -150, 132, 36, 72, 'x', true], [28, 234, -138, 92, 40, 62, 'z', true], [-36, 268, -130, 104, 30, 58, 'x', false],
+  [12, 302, -118, 92, 38, 72, 'z', true], [44, 336, -108, 104, 30, 62, 'x', false], [-22, 368, -98, 92, 34, 72, 'z', true],
+  [18, 400, -90, 120, 30, 66, 'x', false], [-30, 432, -82, 130, 34, 76, 'z', true], [26, 466, -76, 110, 36, 70, 'x', true],
+  [-8, 500, -68, 150, 34, 86, 'z', true],
 ];
 for (const [x, y, z, w, h, d, o, bk] of upper) frame(x, y, z, w, h, d, 4, o, bk);
 // A solid spine behind everything ties the stack together from the ground to the top.
-box(0, 205, -196, 56, 410, 34, darkConcrete);
+box(0, 258, -196, 56, 516, 34, darkConcrete);
+// Raking struts from the spine up to the undersides of the overhanging tiers.
+function rake(x: number, y0: number, z0: number, y1: number, z1: number, w: number, t: number) {
+  const dy = y1 - y0, dz = z1 - z0, len = Math.hypot(dy, dz);
+  const g = new THREE.BoxGeometry(w, len, t); g.rotateX(Math.atan2(dz, dy)); g.translate(x, (y0 + y1) / 2, (z0 + z1) / 2); push(g, plainConcrete);
+}
+for (const x of [-34, 34]) { rake(x, 250, -182, 380, -110, 10, 5); rake(x * 0.6, 340, -182, 480, -84, 9, 5); }
 const coreFront = -179;
 // Rust bleeding from the clock rim down the block face, and long water runs down the spine.
 stain(0, AY - AR - 3, front + 0.06, 60, 12);
 stain(-32, AY + 48, front + 0.06, 26, 14); stain(33, AY + 48, front + 0.06, 24, 13);
 for (const [x, y, w, l] of [[-18, 400, 18, 120], [14, 300, 22, 140], [-8, 190, 30, 120], [10, 110, 20, 100]]) stain(x, y, coreFront + 0.06, w, l);
-// Dry grass at the foot of the spine and around the plateau.
-for (const [x, z] of [[-14, -176], [9, -175], [-30, -177], [26, -176]]) decay.weeds(x, 0, z, 2.2, x * 13 + 5, 40, 2);
-for (const [x, z] of [[-9, 13], [12, 6], [-20, -8], [24, -26], [6, -40], [-14, -70], [30, -84], [-36, -30]]) decay.weeds(x, 0, z, 1.6, x * 17 + z, 45, 1.4);
+// Dry grass along the podium cornice.
+for (const x of [-110, -60, -20, 30, 70, 115]) decay.weeds(x, L1 + 3, MZ + 35, 2.5, x * 13 + 5, 40, 2.4);
 decay.flush();
+BIG = null;   // back to real-world units
 
-// Tiny gate in the foot of the spine, seen between the legs: the only human-scale thing.
-box(0, 4.5, coreFront + 0.05, 3.6, 9, 0.2, voidMat);
-box(-2.5, 4.8, coreFront + 0.8, 1.4, 9.6, 1.6, metal);
-box(2.5, 4.8, coreFront + 0.8, 1.4, 9.6, 1.6, metal);
-box(0, 10.1, coreFront + 0.8, 6.4, 1, 1.6, metal);
-box(0, 9.2, coreFront + 0.3, 3.6, 0.18, 0.4, glow);
+// Tiny gate in the foot of the podium: the only human-scale thing.
+const gateZ = MZ + 35 * K + BACK;
+box(0, 4.5, gateZ + 0.05, 3.6, 9, 0.2, voidMat);
+box(-2.5, 4.8, gateZ + 0.8, 1.4, 9.6, 1.6, metal);
+box(2.5, 4.8, gateZ + 0.8, 1.4, 9.6, 1.6, metal);
+box(0, 10.1, gateZ + 0.8, 6.4, 1, 1.6, metal);
+box(0, 9.2, gateZ + 0.3, 3.6, 0.18, 0.4, glow);
 // A long, low ramp from the plateau edge to the gate, with steel edge lines.
-box(0, 0.12, (coreFront + 8) / 2, 10, 0.24, 8 - coreFront, plainConcrete);
-for (const sx of [-1, 1]) box(sx * 5.1, 0.3, (coreFront + 8) / 2, 0.2, 0.4, 8 - coreFront, metal);
+box(0, 0.12, (gateZ + 8) / 2, 10, 0.24, 8 - gateZ, plainConcrete);
+for (const sx of [-1, 1]) box(sx * 5.1, 0.3, (gateZ + 8) / 2, 0.2, 0.4, 8 - gateZ, metal);
+// Dry grass around the plateau, at real scale.
+{
+  const g = new Decay(scene, { envMap });
+  for (const [x, z] of [[-9, 13], [12, 6], [-20, -8], [24, -26], [6, -40], [-14, -55], [30, -50], [-36, -30], [-8, gateZ + 3], [10, gateZ + 2]]) g.weeds(x, 0, z, 1.6, x * 17 + z, 45, 1.4);
+  g.flush();
+}
 
 // Far monoliths, almost dissolved in the fog: the city-scale depth behind.
-box(-190, 140, -330, 60, 280, 40, plainConcrete);
-box(180, 110, -360, 80, 220, 40, plainConcrete);
-box(30, 170, -440, 120, 340, 50, plainConcrete);
+box(-620, 380, -1100, 160, 760, 100, plainConcrete);
+box(600, 320, -1250, 200, 640, 100, plainConcrete);
+box(80, 520, -1700, 320, 1040, 120, plainConcrete);
 
 // Bake batches into meshes.
 for (const [mat, geos] of batches) {
@@ -415,7 +449,7 @@ for (const [mat, geos] of batches) {
 // Standing sewage water on the plateau.
 {
   const d = new Decay(scene, { envMap });
-  for (const [x, z, rx, rz, sd] of [[-7, 10, 4, 2.5, 11], [18, -12, 6, 3.5, 12], [-25, -50, 9, 5, 13], [9, -80, 7, 4, 14], [-40, -100, 10, 6, 15], [35, -60, 8, 4, 16]]) d.puddle(x, 0, z, rx, rz, sd);
+  for (const [x, z, rx, rz, sd] of [[-7, 10, 4, 2.5, 11], [18, -12, 6, 3.5, 12], [-25, -50, 9, 5, 13], [9, -52, 7, 4, 14], [-40, -46, 10, 6, 15], [35, -60, 8, 4, 16]]) d.puddle(x, 0, z, rx, rz, sd);
   d.flush();
 }
 
@@ -423,10 +457,11 @@ for (const [mat, geos] of batches) {
 const hemi = new THREE.HemisphereLight(0xe6eded, 0x2c2e2c, 1.55);
 scene.add(hemi);
 const key = new THREE.DirectionalLight(0xf0f3f2, 1.5);           // weak, high, soft: overcast sky dome
-key.position.set(-60, 320, 30);           // high overhead: the insides of the boxes fall into shadow
+key.position.set(-180, 1100, 120);           // high overhead: the insides of the boxes fall into shadow
 key.castShadow = true;
 key.shadow.mapSize.set(4096, 4096);
-Object.assign(key.shadow.camera, { left: -260, right: 260, top: 260, bottom: -260, near: 10, far: 900 });
+Object.assign(key.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 10, far: 2800 });
+key.target.position.set(0, 300, -200); scene.add(key.target);
 key.shadow.radius = 6;
 key.shadow.bias = -0.0003;
 scene.add(key);

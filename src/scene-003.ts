@@ -12,7 +12,7 @@ app.innerHTML = `
   <header><div class="eyebrow">CONCRETE WORLD / 003</div><h1>THE VERTICAL VOID</h1></header>
   <aside aria-label="Scene controls">
     <div class="panel-title">ATMOSPHERE</div>
-    <label for="fog">FOG <output id="fog-value">0.008</output><input id="fog" type="range" min="0.002" max="0.03" step="0.001" value="0.008"></label>
+    <label for="fog">FOG <output id="fog-value">0.004</output><input id="fog" type="range" min="0.001" max="0.03" step="0.0002" value="0.0038"></label>
     <label for="light">LIGHT <output id="light-value">1.0</output><input id="light" type="range" min="0.3" max="2.5" step="0.1" value="1.0"></label>
     <button id="next" type="button">NEXT SCENE</button>
     <button id="prev" type="button">SCENE 002</button>
@@ -25,9 +25,9 @@ app.innerHTML = `
 const scene = new THREE.Scene();
 const background = new THREE.Color(0x737a7d);
 scene.background = background;
-scene.fog = new THREE.FogExp2(background, 0.008);
+scene.fog = new THREE.FogExp2(background, 0.0038);
 
-const camera = new THREE.PerspectiveCamera(66, innerWidth / innerHeight, 0.1, 900);
+const camera = new THREE.PerspectiveCamera(66, innerWidth / innerHeight, 0.1, 3000);
 // The observer stands on a landing cantilevered from the south wall, high inside the shaft.
 camera.position.set(0, 2.4, 28.5);
 camera.rotation.order = 'YXZ';
@@ -89,7 +89,7 @@ const glow = new THREE.MeshStandardMaterial({ color: 0x0c0f10, emissive: 0xdff2f
 // suspended machine ring as the focal object.
 const R = 34;
 const BOTTOM = -180;
-const TOP = 118;
+const TOP = 560;   // the oculus is over half a kilometre up
 const TAU = Math.PI * 2;
 b.arc(0, 0, R, R + 4, 0, TAU, BOTTOM, TOP, concrete, 3);                     // shaft wall
 b.disc(0, 0, R, BOTTOM, floorMat, 1);                                         // floor, lost in fog
@@ -113,7 +113,7 @@ for (let i = 0; i < RIBS; i++) {
   b.boxRot(Math.sin(a) * (R - 1.35), (BOTTOM + TOP) / 2, -Math.cos(a) * (R - 1.35), 0.9, TOP - BOTTOM, 0.4, -a, darkMetal);
 }
 // Ring beams: a steel band every 30 m, deeper than the ribs so the shaft reads as stacked drums.
-for (let y = -120; y <= 90; y += 70) {
+for (let y = -120; y <= TOP - 30; y += 70) {
   b.arc(0, 0, R - 2.4, R, 0, TAU, y - 0.9, y + 0.9, metal, 2);
   b.arc(0, 0, R - 2.0, R, 0, TAU, y - 1.6, y - 0.9, darkConcrete, 2);
 }
@@ -275,13 +275,13 @@ const ambient = new THREE.HemisphereLight(0xd6dddd, 0x5a5e5e, 2.0);
 scene.add(ambient);
 // Sun enters only through the oculus: the roof casts shadows, so a bright patch lands on the walls.
 const sun = new THREE.DirectionalLight(0xf2f4f2, 3.2);
-sun.position.set(-40, 320, 70);
+sun.position.set(-176, 1408, 308);
 sun.target.position.set(0, 0, 0);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
 sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
-sun.shadow.camera.near = 50; sun.shadow.camera.far = 700;
+sun.shadow.camera.near = 400; sun.shadow.camera.far = 2600;
 sun.shadow.bias = -0.0004;
 scene.add(sun, sun.target);
 const bounce = new THREE.DirectionalLight(0xb4bcbc, 0.8);
@@ -290,7 +290,7 @@ scene.add(bounce);
 
 // Visible light shaft under the round oculus, leaning the same way the sun does.
 const sunDir = sun.position.clone().normalize();
-const shaftLen = 220;
+const shaftLen = 760;
 const shaft = new THREE.Mesh(new THREE.CylinderGeometry(O - 0.5, O - 0.5, shaftLen, 48, 1, true), beamMat);
 shaft.position.set(0, TOP, 0).addScaledVector(sunDir, -shaftLen / 2);
 shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), sunDir);
