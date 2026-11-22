@@ -342,7 +342,7 @@ const shuttle = new THREE.Group(); shuttle.scale.setScalar(1.5); scene.add(shutt
   const g = new THREE.TorusGeometry(80, 0.18, 6, 200, 2.96); g.rotateX(Math.PI / 2); g.rotateY(Math.PI / 2 + 1.48);
   const gm = new THREE.Mesh(g, guide); gm.position.y = 150 - 3.7; scene.add(gm);
 }
-const SH = { a0: -1.38, a1: 1.38, travel: 80, dwell: 10 };
+const SH = { a0: -1.38, a1: 1.38, travel: 48, dwell: 8 };
 function updateShuttle(t: number) {
   const cycle = 2 * (SH.travel + SH.dwell), p = t % cycle;
   let u: number;
