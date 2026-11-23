@@ -97,7 +97,11 @@ const H = 42;
 block(0, -0.45, 0, 130, 0.9, 170, floorMat);
 b.box(0, H, 0, 130, 2, 170, beamMat);                                     // roof slab (cut by the slit below)
 b.box(-63, H / 2 - 1, 0, 2, H, 170, wallMat); b.box(63, H / 2 - 1, 0, 2, H, 170, wallMat);
-b.box(0, H / 2 - 1, -83, 130, H, 2, wallMat); b.box(0, H / 2 - 1, 83, 130, H, 2, wallMat);
+b.box(0, H / 2 - 1, -83, 130, H, 2, wallMat);
+// South wall, opposite the eye: pierced by the mouth of an endless corridor (built further below).
+const CW = 16, CH = 24;
+b.box(-(65 + CW / 2) / 2, H / 2 - 1, 83, 65 - CW / 2, H, 2, wallMat); b.box((65 + CW / 2) / 2, H / 2 - 1, 83, 65 - CW / 2, H, 2, wallMat);
+b.box(0, (CH + H - 1) / 2, 83, CW, H - 1 - CH, 2, wallMat);
 
 // ---------------------------------------------------------------- columns: bare concrete blades
 // Modelled on flood-control caverns (Tokyo's G-Cans tank: plain pillars about 2 m by 7 m, no capital,
@@ -186,6 +190,52 @@ b.box(0, 0.5, 81.75, 126, 1, 0.5, capMat);
   b.box(0, 0.015, -44, 0.07, 0.03, 72, glow);                               // thin light seam in the floor along the axis
   b.box(0, 0.01, -44, 0.5, 0.02, 72, darkMetal);
 }
+
+// ---------------------------------------------------------------- the endless corridor
+// Opposite the eye, a corridor runs straight out of the hall and never ends: identical concrete
+// frames every 8 m, a strip of ceiling lights (some dead, one flickering), the floor seam carrying
+// on down the middle, and veils of darkness that thicken until everything is black.
+const CL = 240, CZ0 = 84;
+{
+  b.box(0, -0.45, CZ0 + CL / 2, CW + 2, 0.9, CL, floorMat);
+  for (const sx of [-1, 1]) b.box(sx * (CW / 2 + 0.5), CH / 2 - 1, CZ0 + CL / 2, 1, CH, CL, wallMat);
+  b.box(0, CH + 0.5, CZ0 + CL / 2, CW + 2, 1, CL, beamMat);
+  // heavy portal at the mouth
+  for (const sx of [-1, 1]) b.box(sx * (CW / 2 + 1.2), CH / 2, 81.4, 2.4, CH, 1.4, darkMetal);
+  b.box(0, CH + 1.2, 81.4, CW + 4.8, 2.4, 1.4, darkMetal);
+  // repeating frames
+  for (let z = CZ0 + 6; z < CZ0 + CL; z += 8) {
+    for (const sx of [-1, 1]) b.box(sx * (CW / 2 - 0.4), CH / 2 - 1, z, 0.8, CH, 1.2, beamMat);
+    b.box(0, CH - 0.6, z, CW, 1.2, 1.2, beamMat);
+  }
+  b.box(0, 0.015, CZ0 + CL / 2, 0.07, 0.03, CL, glow);          // the axis seam continues forever
+}
+const corridorLamps: THREE.MeshStandardMaterial[] = [];
+{
+  const lampOn = new THREE.MeshStandardMaterial({ color: 0x0c0f10, emissive: 0xdcecef, emissiveIntensity: 1.8, roughness: 1 });
+  const lampDead = new THREE.MeshStandardMaterial({ color: 0x1a1d1e, roughness: 1 });
+  const flicker = lampOn.clone(); corridorLamps.push(flicker);
+  let i = 0;
+  for (let z = CZ0 + 10; z < CZ0 + CL; z += 8, i++) {
+    const mat = i === 3 ? flicker : (i % 5 === 4 || i % 7 === 6) ? lampDead : lampOn;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 4), mat); m.position.set(0, CH - 0.06, z); scene.add(m);
+  }
+}
+// Darkness: unfogged black veils across the corridor, each swallowing a little more light.
+for (let z = CZ0 + 14; z < CZ0 + CL - 2; z += 18) {
+  const veil = new THREE.Mesh(new THREE.PlaneGeometry(CW + 0.4, CH + 0.4), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+  veil.position.set(0, CH / 2 - 0.5, z); scene.add(veil);
+}
+{
+  const end = new THREE.Mesh(new THREE.PlaneGeometry(CW + 2, CH + 2), new THREE.MeshBasicMaterial({ color: 0x000000, fog: false }));
+  end.position.set(0, CH / 2 - 0.5, CZ0 + CL - 1); end.rotation.y = Math.PI; scene.add(end);
+}
+function updateCorridor(t: number) {
+  const f = corridorLamps[0];
+  const n = Math.sin(t * 23) * Math.sin(t * 7.3 + 1) + Math.sin(t * 1.1);
+  f.emissiveIntensity = n > 0.6 ? 0.05 : 1.8 * (0.8 + 0.2 * Math.sin(t * 50));
+}
+
 // A giant mechanical eye inside the ring: it looks around and blinks behind two steel lids.
 const lidMat = darkMetal.clone(); lidMat.side = THREE.DoubleSide;
 const eye = addEye(scene, { center: new THREE.Vector3(0, 18, -84), radius: 12, lidMaterial: lidMat, rimMaterial: metal, envMap });
@@ -248,4 +298,4 @@ const snowfall = [addSnow(scene, camera, renderer, {
   count: 18000, size: 0.05, speed: 1.4, innerRadius: 1.5, opacity: 0.9, fog: 0.02,
 })];
 const clock = new THREE.Clock();
-function animate() { requestAnimationFrame(animate); const dt = Math.min(clock.getDelta(), 0.1); eye.update(dt, clock.elapsedTime); snowfall.forEach((s) => s.update()); composer.render(); } animate();
+function animate() { requestAnimationFrame(animate); const dt = Math.min(clock.getDelta(), 0.1); eye.update(dt, clock.elapsedTime); updateCorridor(clock.elapsedTime); snowfall.forEach((s) => s.update()); composer.render(); } animate();
