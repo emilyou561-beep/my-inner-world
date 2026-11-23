@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Batch, detailed, tex, aoComposer, v3 } from './kit';
 import { Decay } from './decay';
+import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import './style.css';
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -26,7 +27,7 @@ scene.background = SKY;
 scene.fog = new THREE.FogExp2(SKY, 0.0045);
 
 const camera = new THREE.PerspectiveCamera(64, innerWidth / innerHeight, 0.3, 1500);
-camera.position.set(0, 3.2, 0);              // centre of the circular plaza
+camera.position.set(0, 2.0, 0);              // centre of the circular plaza
 camera.rotation.order = 'YXZ';
 let yaw = 0, pitch = 0.2;
 camera.rotation.set(pitch, yaw, 0);
@@ -72,12 +73,7 @@ const TAU = Math.PI * 2;
 
 // ---------------------------------------------------------------- the plaza (observer stands at its centre)
 b.box(0, -0.5, 0, 900, 1, 900, ground);
-b.cylinder(0, 0, 0, 30, 1.2, ground, 96);
-b.arc(0, 0, 30, 32.5, 0, TAU, 0, 0.8, plainDark, 2);                 // two shallow steps around the drum
-b.arc(0, 0, 32.5, 35, 0, TAU, 0, 0.4, plainDark, 2);
-for (const r of [6, 12, 18, 24]) b.arc(0, 0, r - 0.09, r + 0.09, 0, TAU, 1.19, 1.208, plainDark, 1.2);   // paving rings
-for (let i = 0; i < 24; i++) { const a = (i / 24) * TAU; b.boxRot(Math.sin(a) * 18, 1.2, -Math.cos(a) * 18, 0.16, 0.012, 24, -a, plainDark); }
-b.cylinder(0, -0.2, 0, 1.6, 1.5, plainDark, 48);                                                  // a low drum marking the centre
+// The whole ground is a vast mirror, shattered into shards (see "broken mirror floor" below).
 
 // ---------------------------------------------------------------- behind the observer: stepped seating facing the crescent
 const S0 = Math.PI - 1.3, S1 = Math.PI + 1.3, STEPS = 14;
@@ -269,9 +265,7 @@ b.flush(scene, [glass, voidMat, lamp]);
 // ---------------------------------------------------------------- decay
 {
   const d = new Decay(scene, { envMap: new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture });
-  d.puddle(6, 1.2, -9, 3, 2, 51); d.puddle(-9, 1.2, 11, 4, 2.4, 52); d.puddle(21, 1.2, -14, 2.4, 1.5, 53);
-  d.puddle(0, 0, -47, 6, 3, 54); d.puddle(-30, 0, -46, 5, 3, 55);
-  for (let i = 0; i < 12; i++) { const a = i * 0.53; d.weeds(Math.sin(a) * 24, 1.2, -Math.cos(a) * 24, 0.8, 60 + i, 20); }
+  for (let i = 0; i < 12; i++) { const a = i * 0.53; d.weeds(Math.sin(a) * 24, 0, -Math.cos(a) * 24, 0.8, 60 + i, 20); }
   d.flush();
 }
 
@@ -316,6 +310,58 @@ const show = document.querySelector<HTMLButtonElement>('#show')!;
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; });
 show.addEventListener('click', () => { panel.hidden = false; show.hidden = true; });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+
+// ---------------------------------------------------------------- broken mirror floor
+// A real-time planar reflection, broken up in the shader: Voronoi shards each tilted a little
+// (so the reflection jumps at every crack), dark crack lines, a few shards missing down to the
+// dark bed beneath, and grime. Look down to see the sky-bridge and its shuttle reflected.
+const MirrorShader = {
+  name: 'BrokenMirror',
+  uniforms: { color: { value: null }, tDiffuse: { value: null }, textureMatrix: { value: null } },
+  vertexShader: /* glsl */`
+    uniform mat4 textureMatrix; varying vec4 vUv; varying vec2 vPos;
+    void main() { vUv = textureMatrix * vec4(position, 1.0); vPos = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform vec3 color; uniform sampler2D tDiffuse; varying vec4 vUv; varying vec2 vPos;
+    vec2 h2(vec2 p) { p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))); return fract(sin(p) * 43758.5453); }
+    float n2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(h2(i).x, h2(i + vec2(1, 0)).x, f.x), mix(h2(i + vec2(0, 1)).x, h2(i + vec2(1, 1)).x, f.x), f.y); }
+    // returns (edge distance, cell id)
+    vec3 vor(vec2 p) { vec2 ip = floor(p), fp = fract(p); float d1 = 8.0, d2 = 8.0; vec2 id = vec2(0);
+      for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) { vec2 g = vec2(i, j); vec2 r = g + h2(ip + g) - fp; float d = dot(r, r);
+        if (d < d1) { d2 = d1; d1 = d; id = ip + g; } else if (d < d2) d2 = d; }
+      return vec3(sqrt(d2) - sqrt(d1), id); }
+    void main() {
+      vec3 big = vor(vPos * 0.22);                 // shards ~4-5 m
+      vec3 small = vor(vPos * 0.9 + 17.0);         // fine fractures
+      vec2 h = h2(big.yz * 1.7 + 3.1), k = h2(big.yz + 11.0);
+      vec4 uv = vUv; uv.xy += (h - 0.5) * 0.045 * uv.w;            // each shard tilted
+      vec3 refl = texture2DProj(tDiffuse, uv).rgb;
+      refl *= mix(0.3, 0.72, h.y) * vec3(0.88, 0.92, 0.93);         // heavy tarnish, varies per shard
+      float grime = n2(vPos * 0.15) * 0.6 + n2(vPos * 1.3) * 0.4;
+      vec3 bed = vec3(0.07, 0.075, 0.075) * (0.7 + 0.6 * grime);
+      vec3 col = mix(bed, refl, 0.85 - 0.55 * smoothstep(0.45, 0.9, grime));   // dust and silt dull the glass
+      if (k.x > 0.82) col = bed * 0.8;                              // missing shards
+      // crisp, thin cracks at any distance (width from screen-space derivatives)
+      float crack = 1.0 - smoothstep(0.0, fwidth(big.x) * 1.5 + 0.006, big.x);
+      float hair = (1.0 - smoothstep(0.0, fwidth(small.x) * 1.2 + 0.003, small.x)) * step(0.3, h2(small.yz).x);
+      vec3 tiny = vor(vPos * 3.0 + 41.0);
+      hair = max(hair, (1.0 - smoothstep(0.0, fwidth(tiny.x) + 0.002, tiny.x)) * step(0.75, h2(big.yz + 5.0).x));   // shattered patches
+      col = mix(col, vec3(0.02), crack * 0.95);
+      col = mix(col, col * 0.35 + 0.015, hair * 0.8);
+      gl_FragColor = vec4(col, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`,
+};
+{
+  const mirror = new Reflector(new THREE.CircleGeometry(400, 128), {
+    clipBias: 0.003, textureWidth: Math.round(innerWidth * Math.min(devicePixelRatio, 1.5)), textureHeight: Math.round(innerHeight * Math.min(devicePixelRatio, 1.5)),
+    color: 0xffffff, shader: MirrorShader,
+  });
+  mirror.rotation.x = -Math.PI / 2; mirror.position.y = 0.02; scene.add(mirror);
+}
 
 // ---------------------------------------------------------------- moving: the sky-bridge shuttle
 // A single lit car hangs beneath the curved deck 150 m up (a suspended monorail) and crawls from one tower to the other, waits at the

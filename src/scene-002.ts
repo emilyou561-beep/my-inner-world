@@ -494,7 +494,8 @@ function updateBanners(t: number) {
       const x = b0[i * 3], y = b0[i * 3 + 1], z = b0[i * 3 + 2];
       const hang = (L1 * K - 2 - y) / 84;                    // 0 at the bar, 1 at the hem
       const w = hang ** 1.4;
-      pos.setZ(i, z + w * (2.2 * Math.sin(t * 0.55 + bn.phase + y * 0.05) + 0.7 * Math.sin(t * 1.3 + x * 0.15 + bn.phase)));
+      // billow outward only: the cloth never swings back through the wall behind it
+      pos.setZ(i, z + w * (1.6 + 1.1 * Math.sin(t * 0.55 + bn.phase + y * 0.05) + 0.4 * Math.sin(t * 1.3 + x * 0.15 + bn.phase)));
       pos.setX(i, x + w * 0.8 * Math.sin(t * 0.4 + bn.phase * 2));
     }
     pos.needsUpdate = true; bn.geo.computeVertexNormals();
