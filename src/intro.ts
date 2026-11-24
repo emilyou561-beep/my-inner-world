@@ -31,7 +31,18 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) { #intro .line, #intro .line.on, #intro .line.off { transform: none; animation: none; filter: none; } }
 `;
 
+// Play only once per browsing session: coming back to Scene 001 from another scene skips it.
+// sessionStorage can be missing or throw in some embeds, so the referrer is a second check.
+function alreadySeen(): boolean {
+  try { if (sessionStorage.getItem('introSeen') === '1') return true; } catch { /* storage unavailable */ }
+  try { const r = document.referrer ? new URL(document.referrer) : null; if (r && r.origin === location.origin && /classic-00[2-4]/.test(r.pathname)) return true; } catch { /* bad referrer */ }
+  return false;
+}
+function markSeen() { try { sessionStorage.setItem('introSeen', '1'); } catch { /* storage unavailable */ } }
+
 export function showIntro(onDone?: () => void) {
+  if (alreadySeen()) { onDone?.(); return; }
+  markSeen();
   const style = document.createElement('style'); style.textContent = CSS; document.head.appendChild(style);
   const root = document.createElement('div'); root.id = 'intro'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Introduction');
   const els = LINES.map((t) => { const d = document.createElement('div'); d.className = 'line'; d.textContent = t; root.appendChild(d); return d; });
