@@ -15,9 +15,7 @@ if (!app) throw new Error('App root was not found.');
 app.innerHTML = `
   <div id="scene" aria-label="Monumental brutalist exterior"></div>
   <header><div class="eyebrow">CONCRETE WORLD / 002</div><h1>THE MONUMENTAL EXTERIOR</h1></header>
-  <aside aria-label="Scene controls"><div class="panel-title">ATMOSPHERE</div>
-    <label for="fog">FOG <output id="fog-value">0.0012</output><input id="fog" type="range" min="0.0004" max="0.02" step="0.0002" value="0.0012"></label>
-    <label for="light">LIGHT <output id="light-value">1.0</output><input id="light" type="range" min="0.3" max="2" step="0.1" value="1.0"></label>
+  <aside aria-label="Scene controls">
     <a class="panel-link" href="/classic-003.html">NEXT SCENE</a><a class="panel-link" href="/classic-001.html">SCENE 001</a><button id="hide" type="button">HIDE UI</button>
   </aside><button id="show" type="button" hidden>SHOW UI</button>`;
 
@@ -562,12 +560,6 @@ canvas.addEventListener('pointermove', (e) => {
 });
 (window as unknown as { __setView: (y: number, p: number, f?: number) => void }).__setView = (y, p, f) => { yaw = y; pitch = p; camera.rotation.set(pitch, yaw, 0); if (f) { camera.fov = f; camera.updateProjectionMatrix(); } };
 
-const fogInput = document.querySelector<HTMLInputElement>('#fog')!;
-const lightInput = document.querySelector<HTMLInputElement>('#light')!;
-const fogValue = document.querySelector<HTMLOutputElement>('#fog-value')!;
-const lightValue = document.querySelector<HTMLOutputElement>('#light-value')!;
-fogInput.addEventListener('input', () => { const v = Number(fogInput.value); (scene.fog as THREE.FogExp2).density = v; fogValue.textContent = v.toFixed(4); });
-lightInput.addEventListener('input', () => { const v = Number(lightInput.value); hemi.intensity = 1.55 * v; key.intensity = 1.5 * v; lightValue.textContent = v.toFixed(1); });
 const panel = document.querySelector<HTMLElement>('aside')!;
 const show = document.querySelector<HTMLButtonElement>('#show')!;
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; });

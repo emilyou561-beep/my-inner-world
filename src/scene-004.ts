@@ -11,9 +11,6 @@ app.innerHTML = `
   <div id="scene" aria-label="Curved brutalist exterior"></div>
   <header><div class="eyebrow">CONCRETE WORLD / 004</div><h1>THE CRESCENT</h1></header>
   <aside aria-label="Scene controls">
-    <div class="panel-title">ATMOSPHERE</div>
-    <label for="fog">FOG <output id="fog-value">0.0045</output><input id="fog" type="range" min="0.001" max="0.015" step="0.0002" value="0.0045"></label>
-    <label for="light">LIGHT <output id="light-value">1.0</output><input id="light" type="range" min="0.3" max="2" step="0.1" value="1.0"></label>
     <button id="prev" type="button">SCENE 003</button>
     <button id="first" type="button">SCENE 001</button>
     <button id="hide" type="button">HIDE UI</button>
@@ -297,12 +294,6 @@ canvas.addEventListener('pointermove', (e) => {
 });
 (window as unknown as { __setView: (y: number, p: number, f?: number) => void }).__setView = (y, p, f) => { yaw = y; pitch = p; camera.rotation.set(pitch, yaw, 0); if (f) { camera.fov = f; camera.updateProjectionMatrix(); } };
 
-const fogInput = document.querySelector<HTMLInputElement>('#fog')!;
-const lightInput = document.querySelector<HTMLInputElement>('#light')!;
-const fogValue = document.querySelector<HTMLOutputElement>('#fog-value')!;
-const lightValue = document.querySelector<HTMLOutputElement>('#light-value')!;
-fogInput.addEventListener('input', () => { const v = Number(fogInput.value); (scene.fog as THREE.FogExp2).density = v; fogValue.textContent = v.toFixed(4); });
-lightInput.addEventListener('input', () => { const v = Number(lightInput.value); hemi.intensity = 2.1 * v; key.intensity = 0.9 * v; lightValue.textContent = v.toFixed(1); });
 document.querySelector<HTMLButtonElement>('#prev')!.addEventListener('click', () => { window.location.href = '/classic-003.html'; });
 document.querySelector<HTMLButtonElement>('#first')!.addEventListener('click', () => { window.location.href = '/classic-001.html'; });
 const panel = document.querySelector<HTMLElement>('aside')!;

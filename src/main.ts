@@ -15,9 +15,6 @@ app.innerHTML = `
   <div id="scene" aria-label="Interactive concrete hall"></div>
   <header><div class="eyebrow">CONCRETE WORLD / 001</div><h1>THE SILENT OBSERVER</h1></header>
   <aside aria-label="Scene controls">
-    <div class="panel-title">ATMOSPHERE</div>
-    <label for="fog">FOG <output id="fog-value">0.012</output><input id="fog" type="range" min="0.003" max="0.05" step="0.001" value="0.012"></label>
-    <label for="light">LIGHT <output id="light-value">1.4</output><input id="light" type="range" min="0.3" max="3" step="0.1" value="1.4"></label>
     <button id="next" type="button">NEXT SCENE</button>
     <button id="hide" type="button">HIDE UI</button>
   </aside>
@@ -279,15 +276,6 @@ canvas.addEventListener('pointermove', (event) => {
 });
 (window as unknown as { __setView: (y: number, p: number, f?: number) => void }).__setView = (y, p, f) => { yaw = y; pitch = p; camera.rotation.set(pitch, yaw, 0); if (f) { camera.fov = f; camera.updateProjectionMatrix(); } };
 
-const fogInput = document.querySelector<HTMLInputElement>('#fog')!; const lightInput = document.querySelector<HTMLInputElement>('#light')!;
-const fogValue = document.querySelector<HTMLOutputElement>('#fog-value')!; const lightValue = document.querySelector<HTMLOutputElement>('#light-value')!;
-fogInput.addEventListener('input', () => { const value = Number(fogInput.value); (scene.fog as THREE.FogExp2).density = value; fogValue.textContent = value.toFixed(3); });
-lightInput.addEventListener('input', () => {
-  const value = Number(lightInput.value);
-  ambient.intensity = value; interiorFill.intensity = value * 0.385;
-  for (const l of slotLights) l.intensity = value * 5;
-  lightValue.textContent = value.toFixed(1);
-});
 const panel = document.querySelector<HTMLElement>('aside')!; const show = document.querySelector<HTMLButtonElement>('#show')!;
 document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = '/classic-002.html'; });
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; }); show.addEventListener('click', () => { panel.hidden = false; show.hidden = true; });
