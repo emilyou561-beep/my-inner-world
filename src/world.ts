@@ -8,8 +8,8 @@ import './style.css';
 export interface WorldOptions {
   index: string;          // "001"
   title: string;          // "THE SILENT OBSERVER"
-  splat: string;          // "/worlds/scene-001.spz"
-  classic: string;        // "/classic-001.html"
+  splat: string;          // "./worlds/scene-001.spz"
+  classic: string;        // "./classic-001.html"
   prev?: { label: string; href: string };
   next?: { label: string; href: string };
   pitch?: number;         // initial look angle (radians, + = up)

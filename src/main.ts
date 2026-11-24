@@ -51,15 +51,15 @@ function loadMaterialTexture(path: string, color = false, repeat = 3): THREE.Tex
   return texture;
 }
 // Floor: Poly Haven "concrete" (approved).
-const concreteColor = loadMaterialTexture('/textures/concrete_diff_2k.jpg', true);
-const concreteNormal = loadMaterialTexture('/textures/concrete_nor_gl_2k.jpg');
-const concreteRoughness = loadMaterialTexture('/textures/concrete_rough_2k.jpg');
-const concreteDisplacement = loadMaterialTexture('/textures/concrete_disp_2k.jpg');
+const concreteColor = loadMaterialTexture('./textures/concrete_diff_2k.jpg', true);
+const concreteNormal = loadMaterialTexture('./textures/concrete_nor_gl_2k.jpg');
+const concreteRoughness = loadMaterialTexture('./textures/concrete_rough_2k.jpg');
+const concreteDisplacement = loadMaterialTexture('./textures/concrete_disp_2k.jpg');
 const floorMat = new THREE.MeshStandardMaterial({ color: 0x817f79, map: concreteColor, normalMap: concreteNormal, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: concreteRoughness, roughness: 0.9, displacementMap: concreteDisplacement, displacementScale: 0.012 });
 // Columns: Poly Haven "concrete_wall_009" (approved, do not change).
-const columnColor = loadMaterialTexture('/textures/lightwall_diff_2k.jpg', true, 1.5);
-const columnNormal = loadMaterialTexture('/textures/lightwall_nor_gl_2k.jpg', false, 1.5);
-const columnRoughness = loadMaterialTexture('/textures/lightwall_rough_2k.jpg', false, 1.5);
+const columnColor = loadMaterialTexture('./textures/lightwall_diff_2k.jpg', true, 1.5);
+const columnNormal = loadMaterialTexture('./textures/lightwall_nor_gl_2k.jpg', false, 1.5);
+const columnRoughness = loadMaterialTexture('./textures/lightwall_rough_2k.jpg', false, 1.5);
 const columnMat = new THREE.MeshStandardMaterial({ color: 0xb8b6b0, map: columnColor, normalMap: columnNormal, normalScale: new THREE.Vector2(0.08, 0.08), roughnessMap: columnRoughness, roughness: 0.98 });
 
 function block(x: number, y: number, z: number, w: number, h: number, d: number, material: THREE.Material) {
@@ -70,9 +70,9 @@ function block(x: number, y: number, z: number, w: number, h: number, d: number,
 // ---------------------------------------------------------------- refined materials for walls / ceiling
 // Same light-grey concrete family as the columns, but world-scaled UVs (no stretching on 170 m walls)
 // plus panel joints, tie holes and seepage streaks.
-const wMap = tex('/textures/lightwall_diff_2k.jpg', true);
-const wNor = tex('/textures/lightwall_nor_gl_2k.jpg');
-const wRough = tex('/textures/lightwall_rough_2k.jpg');
+const wMap = tex('./textures/lightwall_diff_2k.jpg', true);
+const wNor = tex('./textures/lightwall_nor_gl_2k.jpg');
+const wRough = tex('./textures/lightwall_rough_2k.jpg');
 const wallMat = detailed(new THREE.MeshStandardMaterial({ color: 0xaaa9a3, map: wMap, normalMap: wNor, normalScale: new THREE.Vector2(0.14, 0.14), roughnessMap: wRough, roughness: 0.98 }), { streaks: 0.7 });
 const beamMat = detailed(new THREE.MeshStandardMaterial({ color: 0x86857f, map: wMap, normalMap: wNor, normalScale: new THREE.Vector2(0.12, 0.12), roughnessMap: wRough, roughness: 0.99 }), { joints: 0.6, streaks: 0.4 });
 const capMat = detailed(new THREE.MeshStandardMaterial({ color: 0x9a9993, map: wMap, normalMap: wNor, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wRough, roughness: 0.99 }), { joints: 0, streaks: 0 });
@@ -278,7 +278,7 @@ canvas.addEventListener('pointermove', (event) => {
 (window as unknown as { __setView: (y: number, p: number, f?: number) => void }).__setView = (y, p, f) => { yaw = y; pitch = p; camera.rotation.set(pitch, yaw, 0); if (f) { camera.fov = f; camera.updateProjectionMatrix(); } };
 
 const panel = document.querySelector<HTMLElement>('aside')!; const show = document.querySelector<HTMLButtonElement>('#show')!;
-document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = '/classic-002.html'; });
+document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = './classic-002.html'; });
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; }); show.addEventListener('click', () => { panel.hidden = false; show.hidden = true; });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 // Snow drifting down through the light slit.

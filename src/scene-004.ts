@@ -40,9 +40,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.querySelector('#scene')!.appendChild(renderer.domElement);
 
 // ---------------------------------------------------------------- materials
-const cMap = tex('/textures/lightwall_diff_2k.jpg', true);
-const cNor = tex('/textures/lightwall_nor_gl_2k.jpg');
-const cRough = tex('/textures/lightwall_rough_2k.jpg');
+const cMap = tex('./textures/lightwall_diff_2k.jpg', true);
+const cNor = tex('./textures/lightwall_nor_gl_2k.jpg');
+const cRough = tex('./textures/lightwall_rough_2k.jpg');
 const concreteBase = (color: number, normal = 0.12) => new THREE.MeshStandardMaterial({ color, map: cMap, normalMap: cNor, normalScale: new THREE.Vector2(normal, normal), roughnessMap: cRough, roughness: 0.97 });
 
 // Geometry centres: the crescent wraps the plaza; each tower has its own axis so panel joints follow every curve.
@@ -294,8 +294,8 @@ canvas.addEventListener('pointermove', (e) => {
 });
 (window as unknown as { __setView: (y: number, p: number, f?: number) => void }).__setView = (y, p, f) => { yaw = y; pitch = p; camera.rotation.set(pitch, yaw, 0); if (f) { camera.fov = f; camera.updateProjectionMatrix(); } };
 
-document.querySelector<HTMLButtonElement>('#prev')!.addEventListener('click', () => { window.location.href = '/classic-003.html'; });
-document.querySelector<HTMLButtonElement>('#first')!.addEventListener('click', () => { window.location.href = '/classic-001.html'; });
+document.querySelector<HTMLButtonElement>('#prev')!.addEventListener('click', () => { window.location.href = './classic-003.html'; });
+document.querySelector<HTMLButtonElement>('#first')!.addEventListener('click', () => { window.location.href = './classic-001.html'; });
 const panel = document.querySelector<HTMLElement>('aside')!;
 const show = document.querySelector<HTMLButtonElement>('#show')!;
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; });

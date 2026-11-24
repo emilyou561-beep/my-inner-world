@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 const page = (file: string) => resolve(__dirname, file);
 
 export default defineConfig({
+  // relative asset paths, so the site works under /my-inner-world/ on GitHub Pages
+  base: './',
   build: {
     rollupOptions: {
       input: {

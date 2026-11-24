@@ -53,9 +53,9 @@ function texture(path: string, color = false) {
   if (color) map.colorSpace = THREE.SRGBColorSpace;
   return map;
 }
-const wallColor = texture('/textures/lightwall_diff_2k.jpg', true);
-const wallNormal = texture('/textures/lightwall_nor_gl_2k.jpg');
-const wallRough = texture('/textures/lightwall_rough_2k.jpg');
+const wallColor = texture('./textures/lightwall_diff_2k.jpg', true);
+const wallNormal = texture('./textures/lightwall_nor_gl_2k.jpg');
+const wallRough = texture('./textures/lightwall_rough_2k.jpg');
 
 const concrete = detailed(new THREE.MeshStandardMaterial({ color: 0xb6bbbd, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.98 }), { floorY: -180, cyl: [0, 0], streaks: 0, weather: 1.2 });
 const darkConcrete = detailed(new THREE.MeshStandardMaterial({ color: 0x868b8d, map: wallColor, normalMap: wallNormal, normalScale: new THREE.Vector2(0.1, 0.1), roughnessMap: wallRough, roughness: 0.99 }), { joints: 0.7, streaks: 0, weather: 1.1, floorY: -180, cyl: [0, 0] });
@@ -361,9 +361,9 @@ canvas.addEventListener('pointermove', (e) => {
 });
 (window as unknown as { __setView: (y: number, p: number, f?: number) => void }).__setView = (y, p, f) => { yaw = y; pitch = p; camera.rotation.set(pitch, yaw, 0); if (f) { camera.fov = f; camera.updateProjectionMatrix(); } };
 
-document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = '/classic-004.html'; });
-document.querySelector<HTMLButtonElement>('#prev')!.addEventListener('click', () => { window.location.href = '/classic-002.html'; });
-document.querySelector<HTMLButtonElement>('#first')!.addEventListener('click', () => { window.location.href = '/classic-001.html'; });
+document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = './classic-004.html'; });
+document.querySelector<HTMLButtonElement>('#prev')!.addEventListener('click', () => { window.location.href = './classic-002.html'; });
+document.querySelector<HTMLButtonElement>('#first')!.addEventListener('click', () => { window.location.href = './classic-001.html'; });
 const panel = document.querySelector<HTMLElement>('aside')!;
 const show = document.querySelector<HTMLButtonElement>('#show')!;
 document.querySelector<HTMLButtonElement>('#hide')!.addEventListener('click', () => { panel.hidden = true; show.hidden = false; });

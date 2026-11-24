@@ -16,7 +16,7 @@ app.innerHTML = `
   <div id="scene" aria-label="Monumental brutalist exterior"></div>
   <header><div class="eyebrow">CONCRETE WORLD / 002</div><h1>THE MONUMENTAL EXTERIOR</h1></header>
   <aside aria-label="Scene controls">
-    <a class="panel-link" href="/classic-003.html">NEXT SCENE</a><a class="panel-link" href="/classic-001.html">SCENE 001</a><button id="hide" type="button">HIDE UI</button>
+    <a class="panel-link" href="./classic-003.html">NEXT SCENE</a><a class="panel-link" href="./classic-001.html">SCENE 001</a><button id="hide" type="button">HIDE UI</button>
   </aside><button id="show" type="button" hidden>SHOW UI</button>`;
 
 // ---------------------------------------------------------------- renderer
@@ -52,9 +52,9 @@ function tex(path: string, color = false) {
   if (color) t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-const cMap = tex('/textures/lightwall_diff_2k.jpg', true);
-const cNor = tex('/textures/lightwall_nor_gl_2k.jpg');
-const cRough = tex('/textures/lightwall_rough_2k.jpg');
+const cMap = tex('./textures/lightwall_diff_2k.jpg', true);
+const cNor = tex('./textures/lightwall_nor_gl_2k.jpg');
+const cRough = tex('./textures/lightwall_rough_2k.jpg');
 
 // Surface detail and weathering come from the shared kit (panel joints, tie holes, damp tide marks, rust, pitting).
 const detailed = (m: THREE.MeshStandardMaterial, joints: number) => kitDetailed(m, { joints, streaks: 2.4, weather: joints ? 1.9 : 1.1 });
