@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { addSnow } from './snow';
 import { addEye } from './eye';
+import { showIntro } from './intro';
 import { Decay } from './decay';
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -286,4 +287,5 @@ const snowfall = [addSnow(scene, camera, renderer, {
   count: 18000, size: 0.05, speed: 1.4, innerRadius: 1.5, opacity: 0.9, fog: 0.02,
 })];
 const clock = new THREE.Clock();
+showIntro();   // floating welcome text over the hall when the visitor arrives
 function animate() { requestAnimationFrame(animate); const dt = Math.min(clock.getDelta(), 0.1); eye.update(dt, clock.elapsedTime); updateCorridor(clock.elapsedTime); snowfall.forEach((s) => s.update()); composer.render(); } animate();
