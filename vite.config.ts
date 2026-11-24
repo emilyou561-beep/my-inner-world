@@ -16,7 +16,8 @@ export default defineConfig({
         classic001: page('classic-001.html'),
         classic002: page('classic-002.html'),
         classic003: page('classic-003.html'),
-        classic004: page('classic-004.html')
+        classic004: page('classic-004.html'),
+        classic005: page('classic-005.html')
       }
     }
   }

@@ -11,6 +11,7 @@ app.innerHTML = `
   <div id="scene" aria-label="Curved brutalist exterior"></div>
   <header><div class="eyebrow">CONCRETE WORLD / 004</div><h1>THE CRESCENT</h1></header>
   <aside aria-label="Scene controls">
+    <button id="next" type="button">NEXT SCENE</button>
     <button id="prev" type="button">SCENE 003</button>
     <button id="first" type="button">SCENE 001</button>
     <button id="hide" type="button">HIDE UI</button>
@@ -294,6 +295,7 @@ canvas.addEventListener('pointermove', (e) => {
 });
 (window as unknown as { __setView: (y: number, p: number, f?: number) => void }).__setView = (y, p, f) => { yaw = y; pitch = p; camera.rotation.set(pitch, yaw, 0); if (f) { camera.fov = f; camera.updateProjectionMatrix(); } };
 
+document.querySelector<HTMLButtonElement>('#next')!.addEventListener('click', () => { window.location.href = './classic-005.html'; });
 document.querySelector<HTMLButtonElement>('#prev')!.addEventListener('click', () => { window.location.href = './classic-003.html'; });
 document.querySelector<HTMLButtonElement>('#first')!.addEventListener('click', () => { window.location.href = './classic-001.html'; });
 const panel = document.querySelector<HTMLElement>('aside')!;
