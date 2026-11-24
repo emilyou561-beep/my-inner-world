@@ -30,11 +30,11 @@ app.innerHTML = `
 const SKY = new THREE.Color(0x9da79f);
 const scene = new THREE.Scene();
 scene.background = SKY;
-scene.fog = new THREE.FogExp2(SKY, 0.0024);
+scene.fog = new THREE.FogExp2(SKY, 0.0021);
 const camera = new THREE.PerspectiveCamera(64, innerWidth / innerHeight, 0.3, 3500);
 camera.position.set(0, 13.7, 40);
 camera.rotation.order = 'YXZ';
-let yaw = 0, pitch = 0.2;
+let yaw = 0, pitch = 0.42;
 camera.rotation.set(pitch, yaw, 0);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(innerWidth, innerHeight);
@@ -83,6 +83,38 @@ function facadeTex(tile: string, joint: string, glassA: string, glassB: string, 
       gr.addColorStop(0, 'rgba(50,48,40,0.35)'); gr.addColorStop(1, 'rgba(50,48,40,0)'); g.fillStyle = gr; g.fillRect(x, 190, 2 + rnd() * 4, l); }
   });
 }
+// Prefab concrete panels with small square windows.
+function panelTex(tone: string) {
+  return canvasTex(256, 256, (g) => {
+    g.fillStyle = tone; g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = 'rgba(40,40,38,0.6)'; g.lineWidth = 3; g.strokeRect(1, 1, 254, 254); g.beginPath(); g.moveTo(128, 0); g.lineTo(128, 256); g.stroke();
+    for (const x of [28, 156]) { g.fillStyle = '#8c8f8c'; g.fillRect(x, 70, 72, 92); g.fillStyle = rnd() < 0.3 ? '#3a3022' : '#222a2e'; g.fillRect(x + 5, 75, 62, 82); }
+    for (let i = 0; i < 10; i++) { const x = rnd() * 256, l = 60 + rnd() * 190, gr = g.createLinearGradient(0, 165, 0, 165 + l);
+      gr.addColorStop(0, 'rgba(40,38,32,0.4)'); gr.addColorStop(1, 'rgba(40,38,32,0)'); g.fillStyle = gr; g.fillRect(x, 165, 2 + rnd() * 5, l); }
+  });
+}
+// Ground-floor shops: rolling shutters (some open onto dark interiors) under a painted sign band.
+function shopTex() {
+  return canvasTex(256, 256, (g) => {
+    g.fillStyle = '#5d5f5b'; g.fillRect(0, 0, 256, 256);
+    const cols = ['#9c2a22', '#2b4f86', '#d8c27a', '#2f6b52', '#e8e4da', '#7a2f5c'];
+    g.fillStyle = cols[Math.floor(rnd() * cols.length)]; g.fillRect(0, 20, 256, 50);
+    g.fillStyle = 'rgba(255,255,255,0.75)'; for (let i = 0; i < 4; i++) g.fillRect(30 + i * 52, 34, 30, 22);
+    if (rnd() < 0.6) { g.fillStyle = '#8d908b'; g.fillRect(12, 80, 232, 176); g.fillStyle = 'rgba(40,40,38,0.35)'; for (let y = 84; y < 256; y += 6) g.fillRect(12, y, 232, 2); }
+    else { g.fillStyle = '#1b1d1c'; g.fillRect(12, 80, 232, 176); g.fillStyle = 'rgba(255,214,150,0.25)'; g.fillRect(40, 120, 70, 50); }
+    for (let i = 0; i < 6; i++) { g.fillStyle = `rgba(30,30,28,${0.2 + rnd() * 0.3})`; g.fillRect(rnd() * 256, 70, 2 + rnd() * 5, 80 + rnd() * 100); }
+  });
+}
+// A 1990s blue curtain wall: reflective panes in a grid of light mullions.
+function curtainTex() {
+  return canvasTex(256, 256, (g) => {
+    const gr = g.createLinearGradient(0, 0, 256, 256); gr.addColorStop(0, '#3d6f8e'); gr.addColorStop(0.5, '#29516b'); gr.addColorStop(1, '#33627f');
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+    g.fillStyle = '#a9b3b6'; g.fillRect(0, 0, 256, 10); g.fillRect(0, 0, 8, 256); g.fillRect(124, 0, 6, 256);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.moveTo(20, 250); g.lineTo(110, 20); g.lineTo(140, 20); g.lineTo(50, 250); g.fill();
+    if (rnd() < 0.5) { g.fillStyle = 'rgba(20,25,28,0.6)'; g.fillRect(132, 14, 124, 236); }                 // a dead, darker pane
+  });
+}
 function clockTex() {
   return canvasTex(512, 512, (g) => {
     g.fillStyle = '#e4e2da'; g.beginPath(); g.arc(256, 256, 250, 0, Math.PI * 2); g.fill();
@@ -121,7 +153,14 @@ const facadeMats = [
   facadeTex('#d9d2c2', 'rgba(120,110,95,0.35)', '#2d3a3f', '#161c1f', true, true),
   facadeTex('#cfd3d0', 'rgba(100,110,110,0.35)', '#4b86a6', '#244d66', false, false),
   facadeTex('#d8c9c2', 'rgba(130,105,95,0.35)', '#36444a', '#1a2226', true, true),
-].map((map, i) => detailed(new THREE.MeshStandardMaterial({ map, color: [0xb4b8b1, 0xaeb0a6, 0xb0b5b2, 0xb2aca6][i], roughness: 0.75, envMap, envMapIntensity: 0.2 }), { joints: 0, streaks: 1.6, weather: 1.4 }));
+  facadeTex('#a9c4b8', 'rgba(70,95,85,0.4)', '#2c4a4f', '#18282b', true, false),             // mint mosaic
+  facadeTex('#8f5a4c', 'rgba(60,35,30,0.45)', '#2a3438', '#151b1e', false, true),            // red-brown tile
+  facadeTex('#d6c48e', 'rgba(120,100,60,0.4)', '#41606e', '#22343c', true, false),           // yellow tile
+  panelTex('#a3a49d'), panelTex('#8e928e'),
+].map((map, i) => detailed(new THREE.MeshStandardMaterial({ map, color: [0xb4b8b1, 0xaeb0a6, 0xb0b5b2, 0xb2aca6, 0xb4b8b4, 0xb8b4b0, 0xb6b4ac, 0xb8b8b4, 0xb8b8b4][i], roughness: 0.75, envMap, envMapIntensity: 0.2 }), { joints: 0, streaks: 1.6, weather: 1.4 }));
+const shopMats = [0, 1, 2, 3].map(() => new THREE.MeshStandardMaterial({ map: shopTex(), roughness: 0.8 }));
+const curtain = new THREE.MeshStandardMaterial({ map: curtainTex(), roughness: 0.2, metalness: 0.55, envMap, envMapIntensity: 0.7 });
+const laundryMats = [0xd9d2c4, 0x8a3b33, 0x3d5c8a, 0xc9b46a, 0x6e8a6a].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 1, side: THREE.DoubleSide }));
 const blueGlass = new THREE.MeshStandardMaterial({ color: 0x24506e, roughness: 0.15, metalness: 0.6, envMap, envMapIntensity: 0.8 });
 const hullRust = rustMaterial({ amount: 0.95, seed: 41, envMap, repeat: 3, tint: 0x9a7c6a });
 const paintRust = rustMaterial({ amount: 0.45, seed: 43, envMap, repeat: 2, tint: 0xd8d3c8 });
@@ -133,62 +172,135 @@ const fb = new Batch(4);        // facades: one texture repeat per 4 m bay
 
 // ---------------------------------------------------------------- the drained canal and its quays
 const Z0 = 200, Z1 = -1100, ZL = Z0 - Z1, ZC = (Z0 + Z1) / 2;
-b.box(0, -0.5, ZC, 64, 1, ZL, mud);                                                      // canal bed
+const CW = 15;                                                                           // half-width of the canal
+b.box(0, -0.5, ZC, 34, 1, ZL, mud);                                                      // canal bed
 for (const s of [-1, 1]) {
-  fb.box(s * 30.5, 5, ZC, 1, 10, ZL, quayTile);                                          // tiled embankment wall
-  b.box(s * 39, 5, ZC, 16, 10, ZL, concrete);                                            // quay
-  b.box(s * 30.9, 10.4, ZC, 0.5, 0.8, ZL, concrete);                                    // kerb
-  b.rail(new THREE.Vector3(s * 31.3, 10.8, Z0), new THREE.Vector3(s * 31.3, 10.8, Z1), steelRust, 1.1, 3.2);
+  fb.box(s * (CW + 0.5), 5, ZC, 1, 10, ZL, quayTile);                                    // tiled embankment wall
+  b.box(s * (CW + 8.5), 5, ZC, 16, 10, ZL, concrete);                                    // quay
+  b.box(s * (CW + 0.9), 10.4, ZC, 0.5, 0.8, ZL, concrete);                              // kerb
+  b.rail(new THREE.Vector3(s * (CW + 1.3), 10.8, Z0), new THREE.Vector3(s * (CW + 1.3), 10.8, Z1), steelRust, 1.1, 3.2);
   b.box(s * 300, 4.5, ZC, 520, 9, ZL, concrete);                                         // ground beyond the blocks
 }
 // a rusted lock gate closing the canal behind the observer
-b.box(0, 9, 150, 62, 18, 3, hullRust);
-for (let x = -27; x <= 27; x += 6) b.box(x, 9, 148.2, 0.8, 18, 0.8, steelRust);
+b.box(0, 9, 150, CW * 2 + 2, 18, 3, hullRust);
+for (let x = -CW + 3; x <= CW - 3; x += 6) b.box(x, 9, 148.2, 0.8, 18, 0.8, steelRust);
 
 // ---------------------------------------------------------------- the footbridge you stand on
-b.box(0, 11.6, 40, 96, 0.8, 7, concrete);
-b.box(0, 10.6, 40, 60, 1.2, 4, concrete);                                               // spine beam
-for (const x of [-14, 14]) b.box(x, 5.4, 40, 3, 11, 5, concrete);
-for (const z of [36.7, 43.3]) b.rail(new THREE.Vector3(-47, 12, z), new THREE.Vector3(47, 12, z), steelRust, 1.15, 1.6);
-for (const x of [-24, 24]) for (const z of [36.4, 43.6]) {                               // dead lamp posts
+b.box(0, 11.6, 40, 66, 0.8, 7, concrete);
+b.box(0, 10.6, 40, CW * 2, 1.2, 4, concrete);                                           // spine beam
+for (const z of [36.7, 43.3]) b.rail(new THREE.Vector3(-32, 12, z), new THREE.Vector3(32, 12, z), steelRust, 1.15, 1.6);
+for (const x of [-20, 20]) for (const z of [36.4, 43.6]) {                               // dead lamp posts
   b.box(x, 15.5, z, 0.25, 7, 0.25, darkSteel);
   b.box(x, 19, z + (z > 40 ? -0.7 : 0.7), 0.3, 0.3, 1.6, darkSteel);
 }
 
 // ---------------------------------------------------------------- the blocks
-interface Bld { x: number; z: number; w: number; d: number; h: number; s: number }
+// Each block is built from a small grammar so neighbours differ: a shop podium, one of several body
+// types (tiled slab, open-corridor block, stepped tower, curtain-wall tower, a Kowloon-like cluster of
+// add-ons), then rooftop accretions. Heights are doubled from the first version: a canyon.
+const FRONT = 32;                                                                         // facade line
+interface Bld { front: number; z: number; d: number; h: number; s: number; glass: boolean }
 const blds: Bld[] = [];
+const pick = <T,>(a: T[]) => a[Math.floor(rnd() * a.length)];
+function rooftop(x: number, y: number, z: number, w: number, d: number, s: number) {
+  const n = 2 + Math.floor(rnd() * 4);
+  for (let i = 0; i < n; i++) {
+    const px = x + (rnd() - 0.5) * w * 0.7, pz = z + (rnd() - 0.5) * d * 0.7, r = rnd();
+    if (r < 0.3) b.cylinder(px, y, pz, 1.2 + rnd(), 2.5 + rnd() * 2, darkSteel, 14);                              // water tank
+    else if (r < 0.55) { const sw = 4 + rnd() * 6, sd = 3 + rnd() * 5, sh = 3 + rnd() * 2;                          // rooftop shack
+      fb.box(px, y + sh / 2, pz, sw, sh, sd, pick(facadeMats)); b.box(px, y + sh + 0.15, pz, sw + 0.8, 0.3, sd + 0.8, steelRust); }
+    else if (r < 0.75) b.box(px, y + 5, pz, 0.15, 10 + rnd() * 10, 0.15, darkSteel);                               // antenna
+    else if (r < 0.88) {                                                                                           // billboard frame
+      b.box(px - s * 1, y + 7, pz, 0.4, 9, Math.min(d * 0.8, 14), steelRust);
+      for (const k of [-1, 1]) b.box(px, y + 3, pz + k * 4, 0.3, 6, 0.3, steelRust);
+    } else { const dish = new THREE.Mesh(new THREE.SphereGeometry(1.6, 16, 8, 0, Math.PI * 2, 0, 1.1), darkSteel);  // satellite dish
+      dish.position.set(px, y + 2, pz); dish.rotation.set(-0.8, s > 0 ? -1.2 : 1.2, 0); scene.add(dish); }
+  }
+}
+function block(s: number, zTop: number, len: number) {
+  const zc = zTop - len / 2, far = Math.max(0, -zTop) / 1000;
+  const d = 16 + rnd() * 14, set = rnd() < 0.2 ? 2 + rnd() * 4 : 0;
+  const front = s * (FRONT + set);
+  const H = 2 * ((zTop > -80 ? 18 + rnd() * 30 : 24 + rnd() * 60) + far * (30 + rnd() * 120));
+  let y = 10;
+  // shop podium: two floors of shutters and sign bands
+  if (rnd() < 0.75) { fb.box(front + s * d / 2, y + 4, zc, d, 8, len, pick(shopMats)); b.box(front + s * 0.6, y + 8.3, zc, 1.4, 0.4, len, concrete); y += 8; }
+  const kind = rnd();
+  const mat = pick(facadeMats);
+  if (kind < 0.3) {                                                         // tiled slab, sometimes with a setback crown
+    const h1 = H * (0.75 + rnd() * 0.2);
+    fb.box(front + s * d / 2, y + h1 / 2, zc, d, h1, len, mat);
+    y += h1;
+    if (rnd() < 0.5) { const h2 = H - h1 + 6; fb.box(front + s * (d / 2 + 3), y + h2 / 2, zc, d - 6, h2, len - 6, pick(facadeMats)); y += h2; }
+    b.box(front + s * d / 2, y + 0.3, zc, d + 0.6, 0.6, len + 0.6, roofMat);
+    rooftop(front + s * d / 2, y + 0.6, zc, d, len, s);
+  } else if (kind < 0.5) {                                                  // open-corridor block: balconies, rails, laundry
+    fb.box(front + s * (d / 2 + 1.6), y + H / 2, zc, d, H, len, mat);
+    for (let fy = y + 3.6; fy < y + H - 1; fy += 3.6) {
+      b.box(front + s * 0.8, fy, zc, 1.8, 0.25, len, concrete);
+      b.box(front + s * 0.05, fy + 0.55, zc, 0.12, 1.1, len, concrete);
+      if (zTop > -400 && rnd() < 0.5) for (let k = 0; k < 3; k++) {
+        const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.8 + rnd(), 1 + rnd()), pick(laundryMats));
+        cloth.position.set(front + s * 0.3, fy - 0.8, zc + (rnd() - 0.5) * len * 0.9); cloth.rotation.y = Math.PI / 2; scene.add(cloth);
+      }
+    }
+    y += H; b.box(front + s * (d / 2 + 1.6), y + 0.3, zc, d + 0.6, 0.6, len + 0.6, roofMat);
+    rooftop(front + s * (d / 2 + 1.6), y + 0.6, zc, d, len, s);
+  } else if (kind < 0.68) {                                                 // stepped tower: each segment smaller than the last
+    let w = d, l = len, hx = front + s * d / 2;
+    const segs = 2 + Math.floor(rnd() * 3);
+    for (let i = 0; i < segs; i++) {
+      const sh = (H / segs) * (0.8 + rnd() * 0.4);
+      fb.box(hx, y + sh / 2, zc, w, sh, l, i === 0 ? mat : pick(facadeMats));
+      y += sh; b.box(hx, y + 0.3, zc, w + 0.6, 0.6, l + 0.6, roofMat);
+      w *= 0.72 + rnd() * 0.15; l *= 0.72 + rnd() * 0.15; hx += s * rnd() * 2;
+    }
+    rooftop(hx, y + 0.6, zc, w, l, s);
+  } else if (kind < 0.82) {                                                 // curtain-wall tower with a concrete frame and a crown
+    const hh = H * 1.25;
+    b.box(front + s * d / 2, y + hh / 2, zc, d - 1, hh, len - 1, curtain);
+    for (const k of [-1, 1]) b.box(front + s * d / 2, y + hh / 2, zc + k * (len / 2 - 0.6), d, hh, 1.2, concrete);
+    for (let fy = y; fy < y + hh; fy += 16) b.box(front + s * d / 2, fy, zc, d + 0.3, 1.2, len + 0.3, concrete);
+    y += hh;
+    const crown = rnd();
+    if (crown < 0.4) { const cone = new THREE.Mesh(new THREE.ConeGeometry(Math.min(d, len) * 0.55, 18, 4), concrete); cone.position.set(front + s * d / 2, y + 9, zc); cone.rotation.y = Math.PI / 4; scene.add(cone); }
+    else if (crown < 0.7) { b.cylinder(front + s * d / 2, y, zc, 5, 6, concrete, 24); b.box(front + s * d / 2, y + 22, zc, 0.6, 32, 0.6, darkSteel); }
+    else { const ball = new THREE.Mesh(new THREE.SphereGeometry(7, 24, 16), curtain); ball.position.set(front + s * d / 2, y + 9, zc); scene.add(ball); b.cylinder(front + s * d / 2, y, zc, 2, 3, concrete, 12); }
+  } else {                                                                  // Kowloon-like: a slab encrusted with add-ons and cages
+    fb.box(front + s * d / 2, y + H / 2, zc, d, H, len, mat);
+    for (let i = 0; i < 6 + Math.floor(rnd() * 8); i++) {
+      const bw = 2 + rnd() * 3, bh = 3 + rnd() * 5, bl = 3 + rnd() * 6;
+      const by = y + rnd() * (H - bh), bz = zc + (rnd() - 0.5) * (len - bl);
+      if (rnd() < 0.5) fb.box(front - s * bw / 2, by + bh / 2, bz, bw, bh, bl, pick(facadeMats));
+      else { b.box(front - s * bw / 2, by + bh / 2, bz, bw, bh, 0.1, steelRust); b.box(front - s * bw, by + bh / 2, bz, 0.1, bh, bl, steelRust);   // iron cage balcony
+        for (let k = 0; k <= 6; k++) b.box(front - s * bw, by + bh / 2, bz - bl / 2 + (k * bl) / 6, 0.08, bh, 0.08, steelRust); b.box(front - s * bw / 2, by, bz, bw, 0.2, bl, concrete); }
+    }
+    y += H; b.box(front + s * d / 2, y + 0.3, zc, d + 0.6, 0.6, len + 0.6, roofMat);
+    for (let i = 0; i < 3; i++) { const sw = 4 + rnd() * 5, sh = 3 + rnd() * 4; fb.box(front + s * (d * rnd()), y + sh / 2, zc + (rnd() - 0.5) * len * 0.6, sw, sh, 4 + rnd() * 5, pick(facadeMats)); }
+    rooftop(front + s * d / 2, y + 0.6, zc, d, len, s);
+  }
+  blds.push({ front, z: zc, d: len, h: y - 10, s, glass: kind >= 0.68 && kind < 0.82 });
+}
 for (const s of [-1, 1]) {
   let z = 120;
-  while (z > -1050) {
-    const len = 16 + rnd() * 26, gap = rnd() < 0.3 ? 4 + rnd() * 6 : 0.5;
-    const far = Math.max(0, -z) / 1000;
-    const h = (z > -80 ? 18 + rnd() * 30 : 24 + rnd() * 60) + far * (40 + rnd() * 140);
-    const d = 18 + rnd() * 14, set = rnd() < 0.25 ? 3 + rnd() * 6 : 0;
-    const x = s * (47 + set + d / 2), zc = z - len / 2;
-    blds.push({ x, z: zc, w: d, d: len, h, s });
-    const mat = facadeMats[Math.floor(rnd() * facadeMats.length)];
-    const tower = h > 110 ? blueGlass : mat;
-    fb.box(x, 10 + h / 2, zc, d, h, len, tower === blueGlass && rnd() < 0.5 ? mat : tower);
-    b.box(x, 10 + h + 0.3, zc, d + 0.6, 0.6, len + 0.6, roofMat);
-    if (rnd() < 0.6) b.cylinder(x + s * (rnd() - 0.5) * d * 0.5, 10 + h + 0.6, zc + (rnd() - 0.5) * len * 0.5, 1.6, 3.2, darkSteel, 16);   // water tank
-    if (rnd() < 0.4) b.box(x, 10 + h + 4, zc + (rnd() - 0.5) * len * 0.6, 0.15, 8, 0.15, darkSteel);                                    // antenna
-    if (rnd() < 0.35 && z > -500) {                                                      // rooftop billboard frame
-      const bz = zc + (rnd() - 0.5) * len * 0.3;
-      b.box(x - s * d * 0.3, 10 + h + 6, bz, 0.4, 10, len * 0.7, steelRust);
-      for (let k = -1; k <= 1; k++) b.box(x - s * d * 0.3 + s * 1.2, 10 + h + 3, bz + k * len * 0.3, 0.3, 6, 0.3, steelRust);
-    }
-    if (rnd() < 0.18) {                                                                  // rounded corner tower with ribbon windows
-      const cx = s * (47 + set + 6), cz = z - 6;
-      b.cylinder(cx, 10, cz, 6, h + 8, mat === blueGlass ? concrete : concrete, 32);
-      for (let y = 14; y < 10 + h + 6; y += 4) b.cylinder(cx, y, cz, 6.15, 1.6, blueGlass, 32);
-    }
-    z -= len + gap;
+  while (z > -1050) { const len = 14 + rnd() * 24; block(s, z, len); z -= len + (rnd() < 0.3 ? 3 + rnd() * 5 : 0.4); }
+  for (let i = 0; i < 6; i++) {                                                          // distant high-rises closing the vista
+    const hz = -800 - rnd() * 300, hh = 240 + rnd() * 260, hw = 30 + rnd() * 30;
+    b.box(s * (60 + rnd() * 150), 10 + hh / 2, hz, hw, hh, hw, i % 2 ? curtain : concrete);
   }
-  // distant blue-glass high-rises closing the vista
-  for (let i = 0; i < 6; i++) {
-    const hz = -700 - rnd() * 400, hh = 120 + rnd() * 160, hw = 30 + rnd() * 30;
-    b.box(s * (90 + rnd() * 200), 10 + hh / 2, hz, hw, hh, hw, i % 2 ? blueGlass : concrete);
+}
+// footbridges, pipes and cables strung across the canal between the two walls of blocks
+for (let i = 0; i < 9; i++) {
+  const z = -60 - rnd() * 520, y = 30 + rnd() * 120, r = rnd();
+  if (r < 0.45) {
+    b.box(0, y, z, FRONT * 2, 1.2, 3.4, concrete);
+    b.rail(new THREE.Vector3(-FRONT, y + 0.6, z - 1.6), new THREE.Vector3(FRONT, y + 0.6, z - 1.6), steelRust, 1.1, 2);
+    b.rail(new THREE.Vector3(-FRONT, y + 0.6, z + 1.6), new THREE.Vector3(FRONT, y + 0.6, z + 1.6), steelRust, 1.1, 2);
+    if (rnd() < 0.5) { b.box(0, y + 2.2, z, FRONT * 2, 0.3, 3.6, steelRust); }
+  } else if (r < 0.8) {
+    for (let k = 0; k < 2 + Math.floor(rnd() * 3); k++) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.6 + rnd() * 0.6, 0.6, FRONT * 2, 12), steelRust); p.rotation.z = Math.PI / 2; p.position.set(0, y + k * 1.8, z + (rnd() - 0.5) * 2); p.castShadow = true; scene.add(p); }
+  } else {
+    for (let k = 0; k < 4; k++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, FRONT * 2.02, 4), darkSteel); c.rotation.z = Math.PI / 2 + (rnd() - 0.5) * 0.06; c.position.set(0, y - k * 0.8 - 1.5, z + k * 0.6); scene.add(c); }
   }
 }
 // air-conditioner boxes and vertical signs on the nearer blocks
@@ -197,8 +309,8 @@ const signs: { mesh: THREE.Mesh }[] = [];
 let signIdx = 0;
 for (const bl of blds) {
   if (bl.z < -420) continue;
-  const front = bl.x - bl.s * bl.w / 2;
-  for (let y = 13; y < 10 + bl.h - 2; y += 4) for (let zz = bl.z - bl.d / 2 + 2; zz < bl.z + bl.d / 2 - 1; zz += 4) {
+  const front = bl.front;
+  if (!bl.glass) for (let y = 21; y < Math.min(10 + bl.h - 2, 160); y += 4) for (let zz = bl.z - bl.d / 2 + 2; zz < bl.z + bl.d / 2 - 1; zz += 4) {
     if (rnd() < 0.32) acUnits.push(new THREE.Matrix4().makeTranslation(front - bl.s * 0.35, y + (rnd() - 0.5) * 0.6, zz + (rnd() - 0.5)));
   }
   if (bl.z > -260 && rnd() < 0.7) {
@@ -208,7 +320,7 @@ for (const bl of blds) {
     const side = new THREE.MeshStandardMaterial({ color: 0x55534e, roughness: 0.8 });
     // a blade sign sticking out from the facade, readable from up and down the canal
     const m = new THREE.Mesh(new THREE.BoxGeometry(0.4, sh, 2.6), [mat, mat, side, side, side, side]);
-    m.position.set(front - bl.s * 1.7, 14 + rnd() * Math.max(2, bl.h - sh - 8) + sh / 2, bl.z + (rnd() - 0.5) * bl.d * 0.6);
+    m.position.set(front - bl.s * 1.7, 20 + rnd() * Math.max(2, Math.min(bl.h, 70) - sh - 10) + sh / 2, bl.z + (rnd() - 0.5) * bl.d * 0.6);
     m.castShadow = true; scene.add(m); signs.push({ mesh: m });
     b.box(front - bl.s * 0.8, m.position.y + sh / 2 - 0.3, m.position.z, 1.6, 0.15, 0.15, darkSteel);
     b.box(front - bl.s * 0.8, m.position.y - sh / 2 + 0.3, m.position.z, 1.6, 0.15, 0.15, darkSteel);
@@ -220,7 +332,7 @@ for (const bl of blds) {
 }
 // barber poles by the quay doors near the bridge
 const poleTexs: THREE.CanvasTexture[] = [];
-for (const [x, z] of [[-47.6, 22], [47.6, 8], [-47.6, -18], [47.6, -46]]) {
+for (const [x, z] of [[-31.4, 22], [31.4, 8], [-31.4, -18], [31.4, -46]]) {
   const t = canvasTex(64, 256, (g) => {
     g.fillStyle = '#f2f0ea'; g.fillRect(0, 0, 64, 256);
     for (let i = -4; i < 12; i++) { g.fillStyle = i % 2 ? '#c2271e' : '#2b4f9a'; g.beginPath(); g.moveTo(0, i * 32); g.lineTo(64, i * 32 - 40); g.lineTo(64, i * 32 - 26); g.lineTo(0, i * 32 + 14); g.fill(); }
@@ -233,15 +345,15 @@ for (const [x, z] of [[-47.6, 22], [47.6, 8], [-47.6, -18], [47.6, -46]]) {
 
 // ---------------------------------------------------------------- the clock tower
 {
-  const cx = 58, cz = -108;
-  b.cylinder(cx, 10, cz, 8, 58, concrete, 40);
-  b.cylinder(cx, 48, cz, 8.15, 8, blueGlass, 40);
-  b.cylinder(cx, 68, cz, 7, 12, concrete, 40);
-  b.cylinder(cx, 80, cz, 7.6, 1, roofMat, 40);
-  b.cylinder(cx, 81, cz, 1.2, 9, darkSteel, 12);
+  const cx = 30, cz = -108;
+  b.cylinder(cx, 10, cz, 8, 118, concrete, 40);
+  b.cylinder(cx, 96, cz, 8.15, 8, blueGlass, 40);
+  b.cylinder(cx, 128, cz, 7, 12, concrete, 40);
+  b.cylinder(cx, 140, cz, 7.6, 1, roofMat, 40);
+  b.cylinder(cx, 141, cz, 1.2, 9, darkSteel, 12);
   const face = new THREE.MeshStandardMaterial({ map: clockTex(), roughness: 0.6 });
   for (const [ox, oz, ry] of [[-7.05, 0, -Math.PI / 2], [0, 7.05, 0]] as const) {
-    const m = new THREE.Mesh(new THREE.CircleGeometry(5, 48), face); m.position.set(cx + ox, 74, cz + oz); m.rotation.y = ry; scene.add(m);
+    const m = new THREE.Mesh(new THREE.CircleGeometry(5, 48), face); m.position.set(cx + ox, 134, cz + oz); m.rotation.y = ry; scene.add(m);
   }
 }
 
@@ -273,10 +385,10 @@ function ship(len: number, beam: number, depth: number) {
 }
 const ships: [number, number, number, number, number, number, number, number][] = [
   // len, beam, depth, x, z, yaw, list, sink
-  [58, 11, 9, 9, -40, 0.32, 0.12, 2.6],
-  [104, 15, 12, -5, -170, -0.14, -0.08, 3.4],
-  [44, 9, 8, 14, -305, 0.85, 0.22, 2.2],
-  [82, 13, 11, -9, -520, 0.4, 0.34, 4.5],
+  [58, 10, 9, 3, -40, 0.12, 0.14, 2.6],
+  [104, 12, 12, -2, -170, -0.05, -0.1, 3.4],
+  [44, 9, 8, 4, -305, 0.3, 0.24, 2.2],
+  [82, 11, 11, -3, -520, 0.12, 0.34, 4.5],
 ];
 for (const [l, bm, dp, x, z, yw, list, sink] of ships) {
   const s = ship(l, bm, dp); s.position.set(x, dp / 2 - sink, z); s.rotation.set(0, yw, list); scene.add(s);
@@ -284,8 +396,8 @@ for (const [l, bm, dp, x, z, yw, list, sink] of ships) {
 
 // ---------------------------------------------------------------- the stair tower that stops in mid-air
 {
-  const cx = -21, cz = -150, y0 = 8.5, R = 3.2, STEP = 3.2;
-  const top = 132;
+  const cx = -23, cz = -150, y0 = 10, R = 3.2, STEP = 3.2;
+  const top = 250;
   for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) b.box(cx + sx * R, (y0 + top) / 2, cz + sz * R, 0.45, top - y0, 0.45, steelRust);
   const corner = (k: number) => { const c = [[-1, -1], [1, -1], [1, 1], [-1, 1]][k % 4]; return new THREE.Vector3(cx + c[0] * (R - 0.9), 0, cz + c[1] * (R - 0.9)); };
   let y = y0, k = 0;
@@ -308,14 +420,14 @@ for (const [l, bm, dp, x, z, yw, list, sink] of ships) {
 // ---------------------------------------------------------------- mud, black water, dry grass
 const decay = new Decay(scene, { envMap });
 for (let z = 30, i = 0; z > -900; z -= 16 + rnd() * 10, i++) {
-  const x = 9 * Math.sin(z / 70) + (rnd() - 0.5) * 4;
-  decay.puddle(x, 0, z, 2.5 + rnd() * 3, 9 + rnd() * 8, 300 + i, 'sewage', 0.15 * Math.cos(z / 70));
+  const x = 4 * Math.sin(z / 70) + (rnd() - 0.5) * 2;
+  decay.puddle(x, 0, z, 1.6 + rnd() * 1.5, 8 + rnd() * 6, 300 + i, 'sewage', 0.1 * Math.cos(z / 70));
 }
 for (let i = 0; i < 70; i++) {
-  const z = 40 - rnd() * 700, x = (rnd() < 0.5 ? -1 : 1) * (12 + rnd() * 16);
+  const z = 40 - rnd() * 700, x = (rnd() < 0.5 ? -1 : 1) * (6 + rnd() * 8);
   decay.weeds(x, 0, z, 2 + rnd() * 2, 500 + i, 50, 1.8);
 }
-for (let i = 0; i < 30; i++) decay.weeds((rnd() < 0.5 ? -1 : 1) * (32 + rnd() * 13), 10, 30 - rnd() * 500, 1.2, 700 + i, 25, 1.2);
+for (let i = 0; i < 30; i++) decay.weeds((rnd() < 0.5 ? -1 : 1) * (17 + rnd() * 13), 10, 30 - rnd() * 500, 1.2, 700 + i, 25, 1.2);
 decay.flush();
 
 // ---------------------------------------------------------------- far viaduct and its train
@@ -345,7 +457,7 @@ function updateTrain(t: number) {
 }
 
 // ---------------------------------------------------------------- the dead Ferris wheel
-const wheel = new THREE.Group(); wheel.position.set(-170, 62, -640); wheel.rotation.y = 0.5; scene.add(wheel);
+const wheel = new THREE.Group(); wheel.position.set(-28, 70, -760); wheel.rotation.y = 0.35; scene.add(wheel);
 {
   const W = 48;
   const rim = new THREE.Mesh(new THREE.TorusGeometry(W, 0.6, 8, 120), darkSteel); wheel.add(rim);
@@ -355,11 +467,11 @@ const wheel = new THREE.Group(); wheel.position.set(-170, 62, -640); wheel.rotat
     const sp = new THREE.Mesh(new THREE.BoxGeometry(0.3, W, 0.3), darkSteel); sp.position.set(Math.cos(a) * W / 2, Math.sin(a) * W / 2, 0); sp.rotation.z = a - Math.PI / 2; wheel.add(sp);
     const cab = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3, 2.6), paintRust); cab.position.set(Math.cos(a) * W, Math.sin(a) * W - 2, 0); cab.userData.a = a; wheel.add(cab);
   }
-  for (const s of [-1, 1]) b.slab(new THREE.Vector3(-170 + s * 26, 10, -640), new THREE.Vector3(-170, 62, -640), 1.6, 1.6, darkSteel);
+  for (const s of [-1, 1]) b.slab(new THREE.Vector3(-28 + s * 26, 10, -760), new THREE.Vector3(-28, 70, -760), 1.6, 1.6, darkSteel);
 }
 
 // ---------------------------------------------------------------- the floating bust
-const SY = 196;
+const SY = 330;                                          // hovering above the rooftops of the canyon
 const statueRoot = new THREE.Group(); statueRoot.position.set(0, SY, -270); scene.add(statueRoot);
 const statue = buildStatue(80, envMap);
 statue.group.rotation.x = 0.1;                         // looking down into the basin
@@ -379,7 +491,7 @@ const hemi = new THREE.HemisphereLight(0xdfe6e1, 0x50554c, 2.0); scene.add(hemi)
 const key = new THREE.DirectionalLight(0xeef2ec, 0.85);
 key.position.set(-300, 650, 220); key.target.position.set(0, 0, -300); scene.add(key.target);
 key.castShadow = true; key.shadow.mapSize.set(4096, 4096); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.6;
-Object.assign(key.shadow.camera, { left: -700, right: 700, top: 700, bottom: -700, near: 50, far: 2200 });
+Object.assign(key.shadow.camera, { left: -800, right: 800, top: 800, bottom: -800, near: 50, far: 2600 });
 scene.add(key);
 
 b.flush(scene);
